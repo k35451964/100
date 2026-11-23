@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light only">
+    <title>2100년, 우리 학교 생태지도</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+
+    <!-- 글꼴 (티치타카 생태지도와 같음) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap">
+
+    <!-- 외부 도구 (버전 고정) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=ea41859d834ac4fe1326bbd8b7ec1e68&autoload=false"></script>
+
+    <!-- 이 사이트 (순서 중요: 설정 → 도우미 → 계산 → 데이터 → 화면 → 시작) -->
+    <link rel="stylesheet" href="css/app.css">
+    <script defer src="js/config.js"></script>
+    <script defer src="js/util.js"></script>
+    <script defer src="js/model.js"></script>
+    <script defer src="js/api-live.js"></script>
+    <script defer src="js/api-demo.js"></script>
+    <script defer src="js/map.js"></script>
+    <script defer src="js/keywords.js"></script>
+    <script defer src="js/future.js"></script>
+    <script defer src="js/compare.js"></script>
+    <script defer src="js/gallery.js"></script>
+    <script defer src="js/teacher.js"></script>
+    <script defer src="js/app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="center-card"><div class="spinner" aria-hidden="true"></div><p>불러오는 중… 🌿</p></div>
+    </div>
+    <div class="demo-ribbon" aria-hidden="true">예시 모드</div>
+</body>
+</html>

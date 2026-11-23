@@ -1,0 +1,301 @@
+'use strict';
+// 지도: 카카오맵 (못 불러오면 간단한 점 지도로 대신)
+//
+// 화면 코드는 map.render(view) 로 지금 보여 줄 모습만 넘깁니다.
+//   view.records    [{ id, lat, lon, type, name, state }]   state: 'now' | 'ok' | 'gone' | 'hidden'
+//   view.facilities [{ key, lat, lon, radius, emoji, text, count, green, visible }]
+//   view.newcomers  [{ id, lat, lon, name, type, visible }]
+//   view.area       { lat, lon, radius } (선택: 학교 범위 원)
+
+function kakaoReady(timeoutMs = 5000) {
+    return new Promise((resolve) => {
+        if (!window.kakao || !kakao.maps || typeof kakao.maps.load !== 'function') return resolve(false);
+        const timer = setTimeout(() => resolve(false), timeoutMs);
+        try {
+            kakao.maps.load(() => {
+                clearTimeout(timer);
+                resolve(true);
+            });
+        } catch (_) {
+            clearTimeout(timer);
+            resolve(false);
+        }
+    });
+}
+
+async function createMap(el, { center, radius = 500, onPick = null, interactive = true } = {}) {
+    const ok = await kakaoReady();
+    if (ok) {
+        try {
+            return createKakaoMap(el, { center, radius, onPick, interactive });
+        } catch (err) {
+            console.warn('카카오 지도를 만들지 못해 간단한 지도로 보여 줍니다:', err);
+        }
+    }
+    return createSvgMap(el, { center, radius, onPick });
+}
+
+function dotClass(r) {
+    return `dot dot-${r.state}`;
+}
+
+// ===== 카카오맵 =====
+function createKakaoMap(el, { center, radius, onPick, interactive }) {
+    el.innerHTML = '';
+    const map = new kakao.maps.Map(el, {
+        center: new kakao.maps.LatLng(center.lat, center.lon),
+        level: radius > 700 ? 5 : 4,
+        draggable: interactive,
+        scrollwheel: interactive,
+        disableDoubleClickZoom: !interactive,
+    });
+    if (interactive) map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+    const recs = new Map();
+    const facs = new Map();
+    const news = new Map();
+    let areaCircle = null;
+
+    function fitArea(c, r) {
+        const k = Math.cos((c.lat * Math.PI) / 180) * 111320;
+        const b = new kakao.maps.LatLngBounds();
+        b.extend(new kakao.maps.LatLng(c.lat - r / 110540, c.lon - r / k));
+        b.extend(new kakao.maps.LatLng(c.lat + r / 110540, c.lon + r / k));
+        map.setBounds(b, 10, 10, 10, 10);
+    }
+    fitArea(center, radius);
+
+    return {
+        kind: 'kakao',
+        getCenter() {
+            const c = map.getCenter();
+            return { lat: c.getLat(), lon: c.getLng() };
+        },
+        fitArea,
+        relayout() {
+            map.relayout();
+        },
+        render(view) {
+            if (view.area && !areaCircle) {
+                areaCircle = new kakao.maps.Circle({
+                    center: new kakao.maps.LatLng(view.area.lat, view.area.lon),
+                    radius: view.area.radius,
+                    strokeWeight: 2,
+                    strokeColor: '#10b981',
+                    strokeOpacity: 0.6,
+                    strokeStyle: 'dash',
+                    fillOpacity: 0,
+                });
+                areaCircle.setMap(map);
+            }
+            (view.records || []).forEach((r) => {
+                let o = recs.get(r.id);
+                if (!o) {
+                    const node = document.createElement('div');
+                    node.style.setProperty('--c', TYPE_COLOR[r.type] || '#64748b');
+                    node.title = `${r.name} (${r.type})`;
+                    if (onPick) node.addEventListener('click', () => onPick(r));
+                    o = { node, ov: new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(r.lat, r.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 2 }), shown: false };
+                    recs.set(r.id, o);
+                }
+                const show = r.state !== 'hidden';
+                if (show !== o.shown) {
+                    o.ov.setMap(show ? map : null);
+                    o.shown = show;
+                }
+                const cls = dotClass(r);
+                if (o.node.className !== cls) o.node.className = cls;
+            });
+            (view.facilities || []).forEach((f) => {
+                let o = facs.get(f.key);
+                if (!o) {
+                    const circle = new kakao.maps.Circle({
+                        center: new kakao.maps.LatLng(f.lat, f.lon),
+                        radius: f.radius,
+                        strokeWeight: 1,
+                        strokeColor: f.green ? '#15803d' : '#475569',
+                        strokeOpacity: 0.8,
+                        fillColor: f.green ? '#22c55e' : '#64748b',
+                        fillOpacity: f.green ? 0.3 : 0.55,
+                        zIndex: 1,
+                    });
+                    const node = document.createElement('div');
+                    node.className = `fac${f.green ? ' fac-green' : ''}`;
+                    node.innerHTML = `<span class="fac-emoji">${f.emoji}</span><span class="fac-text">${esc(f.text)}</span>${f.count > 1 ? `<span class="fac-count">×${f.count}</span>` : ''}`;
+                    const label = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(f.lat, f.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, zIndex: 5 });
+                    o = { circle, label, shown: false };
+                    facs.set(f.key, o);
+                }
+                if (f.visible !== o.shown) {
+                    o.circle.setMap(f.visible ? map : null);
+                    o.label.setMap(f.visible ? map : null);
+                    o.shown = f.visible;
+                }
+            });
+            facs.forEach((o, key) => {
+                if (!(view.facilities || []).some((f) => f.key === key) && o.shown) {
+                    o.circle.setMap(null);
+                    o.label.setMap(null);
+                    o.shown = false;
+                }
+            });
+            (view.newcomers || []).forEach((n) => {
+                let o = news.get(n.id);
+                if (!o) {
+                    const node = document.createElement('div');
+                    node.className = 'newcomer';
+                    node.innerHTML = `★<span>${esc(n.name)}</span>`;
+                    if (onPick) node.addEventListener('click', () => onPick({ ...n, state: 'new' }));
+                    o = { ov: new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(n.lat, n.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 6 }), shown: false };
+                    news.set(n.id, o);
+                }
+                if (n.visible !== o.shown) {
+                    o.ov.setMap(n.visible ? map : null);
+                    o.shown = n.visible;
+                }
+            });
+        },
+        clear() {
+            recs.forEach((o) => o.ov.setMap(null));
+            facs.forEach((o) => {
+                o.circle.setMap(null);
+                o.label.setMap(null);
+            });
+            news.forEach((o) => o.ov.setMap(null));
+            recs.clear();
+            facs.clear();
+            news.clear();
+            if (areaCircle) areaCircle.setMap(null);
+            areaCircle = null;
+        },
+    };
+}
+
+// ===== 간단한 점 지도 (SVG) =====
+function createSvgMap(el, { center, radius, onPick }) {
+    const NS = 'http://www.w3.org/2000/svg';
+    el.innerHTML = '';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'svg-map');
+    el.appendChild(svg);
+    let c0 = center;
+    let r0 = radius;
+    let W = 800;
+    let H = 600;
+    let scale = 1;
+    const recNodes = new Map();
+    const facNodes = new Map();
+    const newNodes = new Map();
+    const gArea = document.createElementNS(NS, 'g');
+    const gFac = document.createElementNS(NS, 'g');
+    const gRec = document.createElementNS(NS, 'g');
+    const gLabel = document.createElementNS(NS, 'g');
+    const gNew = document.createElementNS(NS, 'g');
+    svg.append(gArea, gFac, gRec, gLabel, gNew);
+    const note = document.createElementNS(NS, 'text');
+    note.setAttribute('class', 'svg-note');
+    note.textContent = '간단한 지도 (카카오 지도를 불러오지 못했어요)';
+    svg.appendChild(note);
+
+    function project(p) {
+        const k = Math.cos((c0.lat * Math.PI) / 180) * 111320;
+        return { x: W / 2 + (p.lon - c0.lon) * k * scale, y: H / 2 - (p.lat - c0.lat) * 110540 * scale };
+    }
+    function layout() {
+        W = el.clientWidth || 800;
+        H = el.clientHeight || 600;
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        scale = (Math.min(W, H) / 2 - 16) / (r0 * 1.05);
+        note.setAttribute('x', W / 2);
+        note.setAttribute('y', 92);
+        note.setAttribute('text-anchor', 'middle');
+    }
+    layout();
+    let lastView = null;
+
+    function draw(view) {
+        lastView = view;
+        if (view.area) {
+            gArea.innerHTML = '';
+            const p = project(view.area);
+            const ring = document.createElementNS(NS, 'circle');
+            ring.setAttribute('cx', p.x);
+            ring.setAttribute('cy', p.y);
+            ring.setAttribute('r', view.area.radius * scale);
+            ring.setAttribute('class', 'svg-area');
+            gArea.appendChild(ring);
+        }
+        (view.facilities || []).forEach((f) => {
+            let o = facNodes.get(f.key);
+            if (!o) {
+                const circ = document.createElementNS(NS, 'circle');
+                circ.setAttribute('class', `svg-fac${f.green ? ' green' : ''}`);
+                const label = document.createElementNS(NS, 'text');
+                label.setAttribute('class', 'svg-fac-label');
+                label.textContent = `${f.emoji} ${f.text}`;
+                gFac.appendChild(circ);
+                gLabel.appendChild(label);
+                o = { circ, label };
+                facNodes.set(f.key, o);
+            }
+            const p = project(f);
+            o.circ.setAttribute('cx', p.x);
+            o.circ.setAttribute('cy', p.y);
+            o.circ.setAttribute('r', Math.max(4, f.radius * scale));
+            o.label.setAttribute('x', p.x);
+            o.label.setAttribute('y', p.y + 4);
+            o.circ.style.display = f.visible ? '' : 'none';
+            o.label.style.display = f.visible ? '' : 'none';
+        });
+        (view.records || []).forEach((r) => {
+            let node = recNodes.get(r.id);
+            if (!node) {
+                node = document.createElementNS(NS, 'g');
+                node.innerHTML = '<circle r="5"></circle><path d="M-4,-4L4,4M4,-4L-4,4"></path>';
+                node.style.setProperty('--c', TYPE_COLOR[r.type] || '#64748b');
+                if (onPick) node.addEventListener('click', () => onPick(r));
+                gRec.appendChild(node);
+                recNodes.set(r.id, node);
+            }
+            const p = project(r);
+            node.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
+            node.setAttribute('class', `svg-dot svg-${r.state}`);
+        });
+        (view.newcomers || []).forEach((n) => {
+            let node = newNodes.get(n.id);
+            if (!node) {
+                node = document.createElementNS(NS, 'text');
+                node.setAttribute('class', 'svg-new');
+                node.textContent = `★ ${n.name}`;
+                if (onPick) node.addEventListener('click', () => onPick({ ...n, state: 'new' }));
+                gNew.appendChild(node);
+                newNodes.set(n.id, node);
+            }
+            const p = project(n);
+            node.setAttribute('x', p.x);
+            node.setAttribute('y', p.y);
+            node.style.display = n.visible ? '' : 'none';
+        });
+    }
+
+    return {
+        kind: 'svg',
+        getCenter: () => ({ ...c0 }),
+        fitArea(c, r) {
+            c0 = c;
+            r0 = r;
+            layout();
+            if (lastView) draw(lastView);
+        },
+        relayout() {
+            layout();
+            if (lastView) draw(lastView);
+        },
+        render: draw,
+        clear() {
+            [gArea, gFac, gRec, gLabel, gNew].forEach((g) => (g.innerHTML = ''));
+            recNodes.clear();
+            facNodes.clear();
+            newNodes.clear();
+        },
+    };
+}
