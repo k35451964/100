@@ -16,16 +16,19 @@ const SCENARIO = {
     label: '2100년 무렵 · 고탄소 시나리오(SSP5-8.5)',
     short: '2100년',
     period: '2081~2100년',
-    // 기후변화로 오르는 평균 기온(℃). 지금은 한반도 평균값 — 기후정보포털의 대구 북구 값으로 바꿀 예정
-    dT: 7.0,
-    dTNote: '한반도 평균 (대구 값 확인 예정)',
+    // 기후변화로 오르는 연평균 기온(℃): 대구 북구, SSP5-8.5, 21세기 후반기(2081~2100) − 현재(2000~2019)
+    // 출처: 기상청 「대구광역시 기후변화 전망보고서 2023」 표 4-4 (14.0℃ → 20.4℃)
+    // 다른 학교라면 그 지역 광역시도 전망보고서의 시군구 값으로 바꾸세요. (기후정보포털 climate.go.kr)
+    dT: 6.4,
+    dTNote: '대구 북구, 기상청 전망',
 };
 
 // 우리 동네 환경 표 (비교 화면 '우리 동네 환경'). null 이면 '자료 준비 중'으로 보입니다.
+// 출처: 기상청 「대구광역시 기후변화 전망보고서 2023」 대구 북구 (현재 2000~2019 / SSP5-8.5 2081~2100)
 const LOCAL_CLIMATE = {
-    annualTempNow: null, // 연평균 기온 지금(℃)
-    hotDaysNow: null, // 폭염일수 지금(일)
-    hotDaysFuture: null, // 폭염일수 미래(일)
+    annualTempNow: 14.0, // 연평균 기온 지금(℃) — 표 3-1
+    hotDaysNow: 31.8, // 폭염일수 지금(일, 일 최고기온 33℃ 이상) — 표 4-36
+    hotDaysFuture: 119.5, // 폭염일수 2081~2100년(일) — 표 4-36
 };
 
 // ===== 도시 열섬 =====
@@ -83,8 +86,8 @@ const KEYWORD_RULES = [
 const SOURCES = [
     {
         title: '미래 기온',
-        body: `${SCENARIO.period} 고탄소 시나리오(SSP5-8.5)에서 한반도 평균 기온 +${SCENARIO.dT}℃`,
-        from: '환경부·기상청 「한국 기후위기 평가보고서 2025」 (기상청 기후정보포털 국가 기후변화 표준 시나리오)',
+        body: `${SCENARIO.period} 고탄소 시나리오(SSP5-8.5)에서 대구 북구 연평균 기온 ${LOCAL_CLIMATE.annualTempNow.toFixed(1)}℃ → ${(LOCAL_CLIMATE.annualTempNow + SCENARIO.dT).toFixed(1)}℃ (+${SCENARIO.dT}℃), 폭염일수 ${LOCAL_CLIMATE.hotDaysNow}일 → ${LOCAL_CLIMATE.hotDaysFuture}일`,
+        from: '기상청 「대구광역시 기후변화 전망보고서 2023」 (국가 기후변화 표준 시나리오, 현재 2000~2019년 대비). 참고: 같은 시나리오에서 남한 평균 +6.3℃',
     },
     {
         title: '생물이 견디는 기온',
