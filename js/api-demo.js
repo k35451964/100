@@ -67,6 +67,7 @@ const DemoAPI = (() => {
             });
         });
         return {
+            predictions: seedPredictions(),
             nextId: 1000,
             classrooms: [
                 {
@@ -97,6 +98,16 @@ const DemoAPI = (() => {
         };
     }
 
+    // 다른 조의 예측 예시 (2조·5조는 비워 둠: 직접 해 보기)
+    function seedPredictions() {
+        const at = new Date().toISOString();
+        return [
+            { classroom_id: 1, team: 1, species: ['소나무', '왕벚나무', '개나리'], reason: '아파트와 마트가 들어서면 나무가 베일 것 같아서', updated_at: at },
+            { classroom_id: 1, team: 3, species: ['양봉꿀벌', '배추흰나비', '네발나비'], reason: '더워지고 꽃이 줄면 곤충이 먼저 사라질 것 같아서', updated_at: at },
+            { classroom_id: 1, team: 4, species: ['쑥', '강아지풀', '토끼풀'], reason: '건물과 주차장이 풀밭을 덮을 것 같아서', updated_at: at },
+        ];
+    }
+
     function load() {
         try {
             const raw = localStorage.getItem(STORE_KEY);
@@ -104,6 +115,7 @@ const DemoAPI = (() => {
         } catch (_) {
             state = seedState();
         }
+        if (!state.predictions) state.predictions = seedPredictions(); // 예전에 저장된 예시 상태
     }
     function save(event) {
         try {
@@ -347,6 +359,24 @@ const DemoAPI = (() => {
             return texts.map((t) => ({ keyword: t, ...classifyByRules(t), note: '예시 모드: 단어 규칙' }));
         },
 
+        async predictions(classroomId) {
+            return clone(state.predictions.filter((p) => p.classroom_id === classroomId));
+        },
+        async savePrediction(classroomId, team, { species, reason }) {
+            const u = me();
+            const c = state.classrooms.find((x) => x.id === classroomId);
+            const m = state.members.find((x) => x.classroom_id === classroomId && x.user_id === u.id);
+            const teacher = c.teacher_id === u.id;
+            if (!teacher && (!m || m.team !== team)) throw new Error('not allowed');
+            if (!teacher && c.future_open) throw new Error('미래 지도가 열린 뒤에는 예측을 바꿀 수 없어요.');
+            let p = state.predictions.find((x) => x.classroom_id === classroomId && x.team === team);
+            if (!p) {
+                p = { classroom_id: classroomId, team };
+                state.predictions.push(p);
+            }
+            Object.assign(p, { species: species.slice(0, 5), reason: String(reason || '').slice(0, 500), updated_at: new Date().toISOString() });
+            save({ table: 'predictions', classroomId });
+        },
         async posters(classroomId) {
             return clone(state.posters.filter((p) => p.classroom_id === classroomId));
         },
@@ -410,9 +440,10 @@ const DemoAPI = (() => {
                 });
         },
 
-        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers }) {
+        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers, onPredictions }) {
             const fn = (e) => {
                 if (e.table === 'all') {
+                    onPredictions && onPredictions(e);
                     onClassroom && onClassroom(e);
                     onKeywords && onKeywords(e);
                     onPosters && onPosters(e);
@@ -424,6 +455,7 @@ const DemoAPI = (() => {
                 if (e.table === 'keywords' && onKeywords) onKeywords(e);
                 if ((e.table === 'posters' || e.table === 'ratings') && onPosters) onPosters(e);
                 if (e.table === 'members' && onMembers) onMembers(e);
+                if (e.table === 'predictions' && onPredictions) onPredictions(e);
             };
             listeners.add(fn);
             return () => listeners.delete(fn);

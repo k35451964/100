@@ -12,7 +12,15 @@ function showKeywordScreen() {
         <div class="screen kw-screen">
             <div class="kw-bg" id="kw-bg"></div>
             <div class="hud-tl">${headerHtml()}</div>
-            ${teacher ? `<div class="hud-tr join-code-card">참여 코드<b>${esc(APP.cls.code)}</b><span class="muted small" id="kw-count"></span></div>` : ''}
+            ${
+                teacher
+                    ? `<div class="hud-tr join-code-card">
+                        <button type="button" class="qr-mini" id="qr-mini" title="QR 크게 보기">${qrSvg(joinUrl(APP.cls.code))}</button>
+                        <div class="join-code-text">참여 코드<b>${esc(APP.cls.code)}</b><span class="muted small" id="kw-count"></span></div>
+                        <button type="button" class="btn btn-small btn-green" id="btn-today">🗺️ 오늘의 생태지도</button>
+                    </div>`
+                    : ''
+            }
             <h1 class="kw-question">우리 학교 주변에 <span>무엇이 있으면 좋겠나요?</span></h1>
             <div class="kw-cloud" id="kw-cloud" aria-live="polite"></div>
             <div class="kw-bottom">
@@ -28,6 +36,10 @@ function showKeywordScreen() {
         </div>`;
     bindHeader();
     $('kw-form').addEventListener('submit', submitKeyword);
+    if (teacher) {
+        $('qr-mini').addEventListener('click', openJoinQr);
+        $('btn-today').addEventListener('click', openTodayMap);
+    }
     renderBubbles();
     window.addEventListener('resize', renderBubblesDebounced);
     // 뒤에 학교 지도를 흐리게
@@ -148,4 +160,83 @@ async function onBubbleClick(key) {
     } catch (err) {
         toast(friendlyError(err), 'error');
     }
+}
+
+// ===== 참여 QR (1차시 도입: 사이트 접속) =====
+function joinUrl(code) {
+    const demo = API && API.mode === 'demo' ? 'demo=1&' : '';
+    return `${location.origin}${location.pathname}?${demo}join=${encodeURIComponent(code)}`;
+}
+function qrSvg(text) {
+    if (typeof qrcode !== 'function') return '<span class="qr-none">QR</span>'; // QR 도구를 못 불러오면 코드만
+    try {
+        const q = qrcode(0, 'M');
+        q.addData(text);
+        q.make();
+        return q.createSvgTag(4, 2);
+    } catch (_) {
+        return '<span class="qr-none">QR</span>';
+    }
+}
+function openJoinQr() {
+    const code = APP.cls.code;
+    openModal({
+        title: '📱 학반 참여',
+        size: 'wide',
+        className: 'qr-modal',
+        body: `<div class="qr-big">${qrSvg(joinUrl(code))}</div>
+            <p class="qr-code">참여 코드 <b>${esc(code)}</b></p>
+            <p class="muted small qr-url">${esc(joinUrl(code))}</p>
+            <p class="muted small">카메라로 찍으면 로그인 뒤 이 학반에 바로 들어와요.</p>`,
+    });
+}
+
+// ===== 오늘의 생태지도 (1차시 정리: 돌아보기) =====
+async function openTodayMap() {
+    const m = openModal({
+        title: '🗺️ 오늘 모인 우리 학교 생태지도',
+        size: 'full',
+        className: 'today-modal',
+        body: `<div class="today-wrap"><div id="today-map" class="today-map"></div><aside class="today-side" id="today-side"><p class="muted">기록을 불러오는 중… 🌿</p></aside></div>`,
+    });
+    APP.data = null; // 방금 올린 기록까지 새로 불러옴
+    APP.future = null;
+    let d;
+    try {
+        d = await loadClassData();
+    } catch (err) {
+        if ($('today-side')) $('today-side').textContent = `기록을 불러오지 못했어요: ${friendlyError(err)}`;
+        return;
+    }
+    if (!m.el.isConnected) return;
+    const species = new Map();
+    d.records.forEach((r) => {
+        const s = species.get(r.name) || { name: r.name, type: r.type, n: 0 };
+        s.n++;
+        species.set(r.name, s);
+    });
+    const list = [...species.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ko'));
+    const byType = Object.keys(TYPE_COLOR)
+        .map((t) => ({ t, n: list.filter((s) => s.type === t).length }))
+        .filter((x) => x.n);
+    $('today-side').innerHTML = `
+        <div class="today-stats">
+            <div class="stat"><span>생물 종</span><b>${list.length}<small>종</small></b></div>
+            <div class="stat"><span>생물 기록</span><b>${d.records.length}<small>건</small></b></div>
+        </div>
+        <p class="today-types">${byType.map((x) => `<span><i class="lg" style="background:${TYPE_COLOR[x.t]}"></i>${typeEmoji(x.t)} ${esc(x.t)} ${x.n}종</span>`).join('')}</p>
+        <h4>많이 기록된 생물</h4>
+        <ol class="today-top">${list
+            .slice(0, 10)
+            .map((s) => `<li>${typeEmoji(s.type)} ${esc(s.name)} <span class="muted">${s.n}건</span></li>`)
+            .join('')}</ol>
+        <p class="today-q">생물이 가장 많이 모인 곳은 어디일까요? 왜 그럴까요?</p>`;
+    const map = await createMap($('today-map'), { center: d.center, radius: APP.cls.radius_m, onPick: showPick });
+    if (!m.el.isConnected) return;
+    map.render({
+        records: d.records.filter((r) => fin(r.lat)).map((r) => ({ id: r.id, lat: r.lat, lon: r.lon, type: r.type, name: r.name, state: 'now', shape: r.shape, coords: r.coords })),
+        facilities: [],
+        newcomers: [],
+        area: { ...d.center, radius: APP.cls.radius_m },
+    });
 }

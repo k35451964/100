@@ -56,6 +56,23 @@ async function enter() {
         return;
     }
     const q = new URLSearchParams(location.search);
+    // QR(?join=코드)로 들어오면 바로 학반에 참여
+    const joinCode = q.get('join');
+    if (joinCode) {
+        q.delete('join');
+        try {
+            history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}`);
+        } catch (_) {
+            /* 파일로 연 경우 */
+        }
+        try {
+            const id = Number(await API.joinClassroom(joinCode));
+            APP.classrooms = await API.myClassrooms(APP.user);
+            return openClassroom(id);
+        } catch (err) {
+            toast(`학반 코드 ${joinCode}: ${friendlyError(err)}`, 'error');
+        }
+    }
     let wanted = Number(q.get('c'));
     if (!wanted) {
         try {
@@ -213,13 +230,14 @@ async function openClassroom(id) {
         onKeywords: () => refreshKeywords(),
         onPosters: () => refreshPosters(),
         onMembers: () => refreshClassroom(), // 조 배정이 바뀌면 왼쪽 위 '○조'를 바로 바꿈
+        onPredictions: () => refreshPredictions(),
     });
     // 실시간 연결이 끊겼을 때를 대비해, 조가 아직 없으면 20초마다 한 번 확인
     clearInterval(APP.teamPoll);
     APP.teamPoll = setInterval(() => {
         if (APP.cls && !APP.cls.isTeacher && !APP.cls.myTeam && !document.hidden) refreshClassroom();
     }, 20000);
-    [APP.keywords, APP.posters] = await Promise.all([API.keywords(id), API.posters(id)]);
+    [APP.keywords, APP.posters, APP.predictions] = await Promise.all([API.keywords(id), API.posters(id), API.predictions(id)]);
     renderClassroom();
 }
 
@@ -261,8 +279,15 @@ const refreshPosters = debounce(async () => {
     onPostersChanged();
 }, 150);
 
+const refreshPredictions = debounce(async () => {
+    if (!APP.cls) return;
+    APP.predictions = await API.predictions(APP.cls.id);
+    if (typeof predictRefresh === 'function') predictRefresh();
+}, 150);
+
 function onClassroomChanged(before, now) {
     if (APP.screen === 'map') mapScreenClassroomChanged(before, now);
+    if (typeof predictRefresh === 'function') predictRefresh();
     if (typeof galleryRefresh === 'function') galleryRefresh();
     if (typeof teacherPanelRefresh === 'function') teacherPanelRefresh();
     renderHeader();

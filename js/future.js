@@ -32,6 +32,7 @@ async function showMapScreen() {
             <div class="hud-row2">
                 <div id="view-toggle"></div>
                 <button class="btn btn-float btn-small-m" id="btn-keywords">💭 <span class="lbl">키워드</span></button>
+                <button class="btn btn-float btn-small-m" id="btn-predict">🔮 <span class="lbl">예측</span></button>
             </div>
             <div class="alerts collapsed" id="alerts"></div>
             </div>
@@ -50,6 +51,8 @@ async function showMapScreen() {
         </div>`;
     bindHeader();
     $('btn-keywords').addEventListener('click', openKeywordOverlay);
+    $('btn-predict').addEventListener('click', openPredict);
+    updatePredictButton();
     $('btn-compare').addEventListener('click', () => {
         if (!futureAvailable()) return toast('선생님이 미래 지도를 열면 볼 수 있어요.', 'info');
         openCompare();

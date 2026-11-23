@@ -110,6 +110,24 @@ const LiveAPI = (() => {
             return JSON.parse(data.text).items || [];
         },
 
+        // ----- 조별 예측 (미래 보기 전에 사라질 생물 고르기) -----
+        async predictions(classroomId) {
+            const { data, error } = await db.from('classroom_predictions').select('team, species, reason, updated_at').eq('classroom_id', classroomId).order('team');
+            if (error) {
+                // supabase/100_update_2.sql 을 아직 실행하지 않았을 때
+                console.warn('예측 표를 읽지 못했어요:', error.message || error);
+                return null;
+            }
+            return data;
+        },
+        async savePrediction(classroomId, team, { species, reason }) {
+            must(
+                await db
+                    .from('classroom_predictions')
+                    .upsert({ classroom_id: classroomId, team, species, reason, updated_at: new Date().toISOString() }, { onConflict: 'classroom_id,team' })
+            );
+        },
+
         // ----- 포스터·별점 -----
         async posters(classroomId) {
             return must(await db.from('classroom_posters').select('*').eq('classroom_id', classroomId).order('team'));
@@ -150,7 +168,7 @@ const LiveAPI = (() => {
         },
 
         // ----- 실시간 -----
-        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers }) {
+        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers, onPredictions }) {
             const ch = db
                 .channel(`classroom-${classroomId}`)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classrooms', filter: `id=eq.${classroomId}` }, (p) => onClassroom && onClassroom(p))
@@ -158,6 +176,7 @@ const LiveAPI = (() => {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_posters', filter: `classroom_id=eq.${classroomId}` }, (p) => onPosters && onPosters(p))
                 // 조 배정 (학생은 RLS 때문에 자기 줄의 바뀜만 받음)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_members', filter: `classroom_id=eq.${classroomId}` }, (p) => onMembers && onMembers(p))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_predictions', filter: `classroom_id=eq.${classroomId}` }, (p) => onPredictions && onPredictions(p))
                 .subscribe();
             return () => db.removeChannel(ch);
         },

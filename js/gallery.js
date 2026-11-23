@@ -38,8 +38,18 @@ async function galleryRefresh() {
             <button class="btn ${c.results_open ? '' : 'btn-primary'}" id="results-toggle">${c.results_open ? '🙈 결과 다시 숨기기' : '🏆 결과 공개'}</button>
         </div>`;
     } else {
+        // 갤러리 워크: 우리 조 포스터를 책상 위 태블릿에 크게 띄우고, 다른 조를 돌며 별점
+        const others = posters.filter((p) => p.team !== c.myTeam);
+        const ratedN = others.filter((p) => GAL.mine.has(p.id)).length;
+        const mineP = c.myTeam ? byTeam.get(c.myTeam) : null;
+        const progress = c.results_open
+            ? '<span class="muted">🏆 결과가 공개됐어요</span>'
+            : others.length
+              ? `<span class="rate-progress${ratedN === others.length ? ' done' : ''}">${ratedN === others.length ? '✅ 별점을 다 줬어요' : `⭐ 별점 ${ratedN}/${others.length}조`}</span>`
+              : '<span class="muted">다른 조 포스터가 올라오면 별점을 주세요 (이름 없이)</span>';
         head = `<div class="gal-bar"><span>${c.myTeam ? `우리 조: <b>${c.myTeam}조</b>` : '조 배정 전이에요'}</span>
-            <span class="muted">${c.results_open ? '🏆 결과가 공개됐어요' : '다른 조 포스터에 별점을 주세요 (이름 없이)'}</span></div>`;
+            ${progress}
+            ${mineP && mineP.image_url ? '<button class="btn btn-small btn-violet" id="show-mine">📺 우리 조 포스터 띄우기</button>' : ''}</div>`;
     }
     let podium = '';
     if (c.results_open && ranked.length) {
@@ -98,6 +108,8 @@ async function galleryRefresh() {
             }
         })
     );
+    const sm = $('show-mine');
+    if (sm) sm.addEventListener('click', () => openPresentation(c.myTeam, { single: true }));
     const rt = $('results-toggle');
     if (rt)
         rt.addEventListener('click', async () => {
@@ -200,12 +212,12 @@ function openRating(posterId) {
     });
 }
 
-// 크게 보기 (갤러리 발표, 전자칠판)
-function openPresentation(team) {
-    const teams = APP.posters.filter((p) => p.image_url).map((p) => p.team).sort((a, b) => a - b);
+// 크게 보기 (전자칠판 발표 / 갤러리 워크: single = 우리 조 포스터만, 책상 위 태블릿에 띄워 둠)
+function openPresentation(team, { single = false } = {}) {
+    const teams = single ? [team] : APP.posters.filter((p) => p.image_url).map((p) => p.team).sort((a, b) => a - b);
     let i = Math.max(0, teams.indexOf(team));
     const wrap = document.createElement('div');
-    wrap.className = 'present';
+    wrap.className = `present${single ? ' single' : ''}`;
     document.body.appendChild(wrap);
     const draw = () => {
         const p = APP.posters.find((x) => x.team === teams[i]);
