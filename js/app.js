@@ -22,6 +22,11 @@ const isTeacher = () => !!(APP.cls && APP.cls.isTeacher);
 document.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
+    // 너무 오래 걸리면 안내
+    setTimeout(() => {
+        const card = document.querySelector('#app .spinner + p'); // 처음 '불러오는 중' 화면이 그대로일 때만
+        if (card) card.innerHTML = '오래 걸리고 있어요. 인터넷 연결을 확인하고 <a href="javascript:location.reload()">새로고침</a>해 주세요.';
+    }, 15000);
     const q = new URLSearchParams(location.search);
     APP.api = window.API = q.get('demo') === '1' ? DemoAPI : LiveAPI;
     document.body.classList.toggle('demo', APP.api.mode === 'demo');
@@ -32,11 +37,12 @@ async function boot() {
             <p class="muted">서버 없이 둘러보려면 <a href="?demo=1">예시 모드</a>로 열어 보세요.</p></div>`;
         return;
     }
+    APP.user = await API.currentUser();
+    // 로그인 상태를 먼저 확인한 뒤에 변화를 듣습니다. (먼저 들으면 처음 알림을 '방금 로그인'으로 착각해 새로고침이 반복됨)
     API.onAuthChange((u) => {
         const was = APP.user ? APP.user.id : null;
         if ((u ? u.id : null) !== was) location.reload();
     });
-    APP.user = await API.currentUser();
     if (!APP.user) return showLogin();
     await enter();
 }
