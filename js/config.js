@@ -37,7 +37,7 @@ const LOCAL_CLIMATE = {
 const HEAT_ISLAND = { fullUrbanC: 3.0 };
 
 // ===== 생물 계절 =====
-// [미래 보기] 연출 빠르기: 1 = 기본(약 40초), 1.5 = 더 빠르게, 0.8 = 더 천천히
+// [미래 보기] 연출 빠르기: 1 = 기본(약 45초), 1.5 = 더 빠르게, 0.8 = 더 천천히
 const PLAY_SPEED = 1;
 
 const PHENOLOGY = { springDaysPerC: 4.1 }; // 봄 기온 1℃ 오를 때 개화가 빨라지는 날 수
