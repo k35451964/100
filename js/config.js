@@ -9,7 +9,7 @@
 const SUPABASE_URL = 'https://friyvbyelxnrlrhktumm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_BxFfTP94V9MbhWPghvkRdw_FT1Jl-_a';
 const TEACHITAKA_URL = 'https://teachitaka.kro.kr'; // 가입·비밀번호 찾기·탐사(기록)는 생태지도에서
-// 카카오맵 키는 index.html 의 <script> 주소에 있습니다 (생태지도와 같은 키). 카카오 개발자 콘솔에 이 사이트 주소를 등록해야 지도가 뜸
+// 카카오맵 키는 index.html 의 <script> 주소에 있습니다 (생태지도 앱의 JavaScript 키 '기후변화', SDK 도메인: k35451964.github.io). 카카오 개발자 콘솔에 이 사이트 주소를 등록해야 지도가 뜸
 
 // ===== 미래 시나리오 (고정) =====
 const SCENARIO = {
