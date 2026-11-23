@@ -226,6 +226,40 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
         console.warn('클러스터를 쓰지 못해 점을 하나씩 보여 줍니다:', err);
         clusters = null;
     }
+    // 묶음(숫자 동그라미)에 들어간 기록은 선·면 모양도 숨김 → 확대해서 풀리면 다시 보임
+    const CLUSTER_MIN_LEVEL = 4;
+    const CLUSTER_MIN_SIZE = 3;
+    const inCluster = { ok: new Set(), gone: new Set() };
+    function applyShapeVisibility() {
+        recs.forEach((o, id) => {
+            if (!o.shapeObj) return;
+            const show = o.group !== null && !(clusters && (inCluster.ok.has(id) || inCluster.gone.has(id)));
+            if (show !== o.shapeShown) {
+                o.shapeObj.setMap(show ? map : null);
+                o.shapeShown = show;
+            }
+        });
+    }
+    if (clusters) {
+        ['ok', 'gone'].forEach((g) =>
+            kakao.maps.event.addListener(clusters[g], 'clustered', (list) => {
+                inCluster[g] = new Set();
+                if (map.getLevel() >= CLUSTER_MIN_LEVEL) {
+                    (list || []).forEach((c) => {
+                        if (c.getSize() >= CLUSTER_MIN_SIZE) c.getMarkers().forEach((m) => m._rid != null && inCluster[g].add(m._rid));
+                    });
+                }
+                applyShapeVisibility();
+            })
+        );
+        kakao.maps.event.addListener(map, 'zoom_changed', () => {
+            if (map.getLevel() < CLUSTER_MIN_LEVEL) {
+                inCluster.ok = new Set();
+                inCluster.gone = new Set();
+                applyShapeVisibility();
+            }
+        });
+    }
 
     function fitArea(c, r) {
         const k = Math.cos((c.lat * Math.PI) / 180) * 111320;
@@ -268,6 +302,7 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                     node.title = `${r.name} (${r.type})`;
                     if (onPick) node.addEventListener('click', () => onPick(r));
                     o = { node, ov: new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(r.lat, r.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 2 }), shown: false, group: null };
+                    o.ov._rid = r.id;
                     recs.set(r.id, o);
                 }
                 const cls = dotClass(r);
@@ -285,10 +320,12 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                         o.shapeObj.setOptions(opts);
                         o.shapeKey = look.key;
                     }
-                    const showShape = r.state !== 'hidden';
-                    if (showShape !== o.shapeShown) {
-                        o.shapeObj.setMap(showShape ? map : null);
-                        o.shapeShown = showShape;
+                    if (!clusters) {
+                        const showShape = r.state !== 'hidden';
+                        if (showShape !== o.shapeShown) {
+                            o.shapeObj.setMap(showShape ? map : null);
+                            o.shapeShown = showShape;
+                        }
                     }
                 }
                 if (clusters) {
@@ -309,6 +346,7 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                 }
             });
             dirty.forEach((g) => clusters[g].redraw());
+            if (clusters) applyShapeVisibility();
             (view.facilities || []).forEach((f) => {
                 let o = facs.get(f.key);
                 if (!o) {
