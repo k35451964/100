@@ -209,7 +209,7 @@ async function runFuturePlay() {
     const tint = $('heat-tint');
     // 화면이 바뀌면(다른 화면, 지도 새로 그림) 연출을 멈춤
     const wait = async (ms) => {
-        await sleep(ms);
+        await sleep(ms / (PLAY_SPEED || 1));
         if (APP.screen !== 'map' || token !== MS.token || !document.body.contains(cap)) throw PLAY_ABORT;
     };
     const pop = (el, html) => {
@@ -235,14 +235,14 @@ async function runFuturePlay() {
     tint.style.opacity = '0';
     sub.hidden = true;
     drawMap(stage);
-    await say(`1차시에 우리가 바랐던 것들이<br><b>학교 주변에 생기면…</b>`, 2600);
+    await say(`1차시에 우리가 바랐던 것들이<br><b>학교 주변에 생기면…</b>`, 2000);
     cap.hidden = true;
 
     // ① 시설이 하나씩 생기며 그 자리 생물이 사라짐 (자막: 이 자리에서 사라진 생물)
     const order = f.facilities.slice().sort((a, b) => a.count - b.count);
     const talks = (fac) => fac.category === 'green' || (fac.lostNames || []).length || (fac.partialNames || []).length;
-    const talkStep = Math.max(1100, Math.min(1700, 17000 / Math.max(1, order.filter(talks).length)));
-    const quietStep = Math.max(250, Math.min(600, 5000 / Math.max(1, order.length)));
+    const talkStep = Math.max(800, Math.min(1300, 10000 / Math.max(1, order.filter(talks).length)));
+    const quietStep = Math.max(150, Math.min(350, 3000 / Math.max(1, order.length)));
     for (const fac of order) {
         stage.facilities.add(fac.key);
         f.fates.forEach((x) => {
@@ -265,11 +265,11 @@ async function runFuturePlay() {
     }
     f.fates.forEach((x) => x.fate === 'habitat' && stage.gone.add(x.rec.id)); // 혹시 빠진 기록까지
     drawMap(stage);
-    await line(`시설이 들어선 자리에서 생물 기록 <b>${f.counts.lostHabitat}건</b>이 사라졌습니다${f.counts.partial ? `<br><small>${f.counts.partial}건은 서식지 일부만 남았습니다</small>` : ''}`, 2400);
+    await line(`시설이 들어선 자리에서 생물 기록 <b>${f.counts.lostHabitat}건</b>이 사라졌습니다${f.counts.partial ? `<br><small>${f.counts.partial}건은 서식지 일부만 남았습니다</small>` : ''}`, 1800);
     sub.hidden = true;
 
     // ② 2100년까지 기온 상승 (+ 열섬). 견딘 범위를 먼저 넘는 생물부터 사라짐
-    await say(`그리고 ${esc(SCENARIO.period)},<br>온실가스를 계속 많이 내뿜는다면 <b>(고탄소 시나리오)</b>`, 2800);
+    await say(`그리고 ${esc(SCENARIO.period)},<br>온실가스를 계속 많이 내뿜는다면 <b>(고탄소 시나리오)</b>`, 2200);
     cap.hidden = true;
     counter.hidden = false;
     const dT = f.env.dT;
@@ -280,7 +280,7 @@ async function runFuturePlay() {
         .sort((a, b) => a.at - b.at);
     const statusOf = new Map(f.species.map((s) => [s.name, s.status]));
     const beats = 6;
-    const sub8 = 8;
+    const sub8 = 6;
     const shownNames = new Set();
     for (let b = 1; b <= beats; b++) {
         const newly = [];
@@ -297,7 +297,7 @@ async function runFuturePlay() {
                 }
             });
             drawMap(stage);
-            await wait(90);
+            await wait(70);
         }
         const k = b / beats;
         const hot = Math.round(LOCAL_CLIMATE.hotDaysNow + (LOCAL_CLIMATE.hotDaysFuture - LOCAL_CLIMATE.hotDaysNow) * k);
@@ -310,18 +310,18 @@ async function runFuturePlay() {
         if (gone.length) top = `🥵 더위를 견디지 못한 ${nameList(gone, '이', '가')} 사라졌습니다`;
         else if (fewer.length) top = `🥵 더위로 ${nameList(fewer, '이', '가')} 줄어들었습니다`;
         if (gone.length && fewer.length) top += `<br><small>${nameList(fewer, '은', '는')} 줄어들었습니다</small>`;
-        await line(top ? `${top}<br><small class="sub-people">👥 ${people}</small>` : `👥 ${people}`, top ? 3000 : 2300);
+        await line(top ? `${top}<br><small class="sub-people">👥 ${people}</small>` : `👥 ${people}`, top ? 2300 : 1600);
     }
     sub.hidden = true;
-    await wait(400);
+    await wait(300);
 
     // ③ 새로 온 생물
     if (f.newcomers.length) {
         stage.newcomers = true;
         drawMap(stage);
-        await say(`<b>★ 처음 보는 생물</b>이 나타났다`, 1800);
+        await say(`<b>★ 처음 보는 생물</b>이 나타났다`, 1200);
         cap.hidden = true;
-        await line(`★ 더 따뜻한 곳에 살던 ${nameList(f.newcomers.map((n) => n.name), '이', '가')} 우리 학교에 나타났습니다`, 3000);
+        await line(`★ 더 따뜻한 곳에 살던 ${nameList(f.newcomers.map((n) => n.name), '이', '가')} 우리 학교에 나타났습니다`, 2300);
         sub.hidden = true;
     }
 
@@ -332,7 +332,7 @@ async function runFuturePlay() {
          <div class="sum-row"><span>생물 종</span><b>${c.speciesNow}종 → ${c.speciesFuture}종</b></div>
          <div class="sum-row"><span>생물 기록</span><b>${c.recordsNow}건 → ${c.recordsFuture}건</b></div>
          <div class="sum-q">무엇이 이런 변화를 일으켰을까?</div>`,
-        4200
+        3600
     );
     cap.hidden = true;
     counter.hidden = true;
