@@ -171,6 +171,35 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
     const news = new Map();
     let areaCircle = null;
 
+    // 클러스터 (생태지도처럼 가까운 기록을 숫자 동그라미로 묶음, 누르면 확대)
+    //   살아남은·지금 생물: 초록 동그라미 / 사라진 생물: 회색 ✕ 동그라미
+    const hasCluster = !!kakao.maps.MarkerClusterer;
+    const clusterStyle = (color, bg, border) => ({
+        width: '40px',
+        height: '40px',
+        background: bg,
+        borderRadius: '50%',
+        color,
+        textAlign: 'center',
+        lineHeight: '34px',
+        fontWeight: '900',
+        fontSize: '14px',
+        border: `3px solid ${border}`,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+    });
+    let clusters = null;
+    try {
+        clusters = hasCluster
+        ? {
+              ok: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 3, gridSize: 50, styles: [clusterStyle('#047857', 'rgba(255,255,255,0.95)', '#10b981')] }),
+              gone: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 3, gridSize: 50, texts: (n) => `✕${n}`, styles: [clusterStyle('#4b5563', 'rgba(229,231,235,0.95)', '#9ca3af')] }),
+          }
+        : null;
+    } catch (err) {
+        console.warn('클러스터를 쓰지 못해 점을 하나씩 보여 줍니다:', err);
+        clusters = null;
+    }
+
     function fitArea(c, r) {
         const k = Math.cos((c.lat * Math.PI) / 180) * 111320;
         const b = new kakao.maps.LatLngBounds();
@@ -203,6 +232,7 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                 });
                 areaCircle.setMap(map);
             }
+            const dirty = new Set();
             (view.records || []).forEach((r) => {
                 let o = recs.get(r.id);
                 if (!o) {
@@ -210,17 +240,29 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                     node.style.setProperty('--c', TYPE_COLOR[r.type] || '#64748b');
                     node.title = `${r.name} (${r.type})`;
                     if (onPick) node.addEventListener('click', () => onPick(r));
-                    o = { node, ov: new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(r.lat, r.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 2 }), shown: false };
+                    o = { node, ov: new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(r.lat, r.lon), content: node, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 2 }), shown: false, group: null };
                     recs.set(r.id, o);
-                }
-                const show = r.state !== 'hidden';
-                if (show !== o.shown) {
-                    o.ov.setMap(show ? map : null);
-                    o.shown = show;
                 }
                 const cls = dotClass(r);
                 if (o.node.className !== cls) o.node.className = cls;
+                if (clusters) {
+                    const group = r.state === 'hidden' ? null : r.state === 'gone' ? 'gone' : 'ok';
+                    if (group !== o.group) {
+                        if (o.group) clusters[o.group].removeMarker(o.ov, true);
+                        if (group) clusters[group].addMarker(o.ov, true);
+                        if (o.group) dirty.add(o.group);
+                        if (group) dirty.add(group);
+                        o.group = group;
+                    }
+                } else {
+                    const show = r.state !== 'hidden';
+                    if (show !== o.shown) {
+                        o.ov.setMap(show ? map : null);
+                        o.shown = show;
+                    }
+                }
             });
+            dirty.forEach((g) => clusters[g].redraw());
             (view.facilities || []).forEach((f) => {
                 let o = facs.get(f.key);
                 if (!o) {
@@ -271,6 +313,10 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
             });
         },
         clear() {
+            if (clusters) {
+                clusters.ok.clear();
+                clusters.gone.clear();
+            }
             recs.forEach((o) => o.ov.setMap(null));
             facs.forEach((o) => {
                 o.circle.setMap(null);
