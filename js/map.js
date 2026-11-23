@@ -29,10 +29,126 @@ async function createMap(el, { center, radius = 500, onPick = null, interactive 
         try {
             return createKakaoMap(el, { center, radius, onPick, interactive });
         } catch (err) {
-            console.warn('카카오 지도를 만들지 못해 간단한 지도로 보여 줍니다:', err);
+            console.warn('카카오 지도를 만들지 못했어요:', err);
+        }
+    }
+    // 카카오가 안 되면 OpenStreetMap 지도 (카카오 개발자 콘솔에 이 주소가 등록되기 전 등)
+    if (window.L && L.map) {
+        try {
+            return createLeafletMap(el, { center, radius, onPick, interactive });
+        } catch (err) {
+            console.warn('OpenStreetMap 지도를 만들지 못해 간단한 지도로 보여 줍니다:', err);
         }
     }
     return createSvgMap(el, { center, radius, onPick });
+}
+
+// ===== OpenStreetMap (Leaflet) =====
+function createLeafletMap(el, { center, radius, onPick, interactive }) {
+    el.innerHTML = '';
+    const map = L.map(el, {
+        zoomControl: interactive,
+        dragging: interactive,
+        scrollWheelZoom: interactive,
+        doubleClickZoom: interactive,
+        touchZoom: interactive,
+        boxZoom: interactive,
+        keyboard: interactive,
+        attributionControl: true,
+    });
+    if (interactive) map.zoomControl.setPosition('topright');
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    const icon = (html, cls = '') => L.divIcon({ className: `lf-icon ${cls}`, html: `<div class="lf-center">${html}</div>`, iconSize: [0, 0] });
+    const recs = new Map();
+    const facs = new Map();
+    const news = new Map();
+    let areaCircle = null;
+    function fitArea(c, r) {
+        map.fitBounds(L.latLng(c.lat, c.lon).toBounds(r * 2), { padding: [10, 10] });
+    }
+    fitArea(center, radius);
+    return {
+        kind: 'leaflet',
+        getCenter() {
+            const c = map.getCenter();
+            return { lat: c.lat, lon: c.lng };
+        },
+        fitArea,
+        relayout() {
+            map.invalidateSize();
+        },
+        render(view) {
+            if (view.area && !areaCircle) {
+                areaCircle = L.circle([view.area.lat, view.area.lon], { radius: view.area.radius, color: '#10b981', weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(map);
+            }
+            (view.records || []).forEach((r) => {
+                let o = recs.get(r.id);
+                if (!o) {
+                    const m = L.marker([r.lat, r.lon], { icon: icon(`<div class="dot" style="--c:${TYPE_COLOR[r.type] || '#64748b'}"></div>`), keyboard: false });
+                    if (onPick) m.on('click', () => onPick(r));
+                    o = { m, shown: false, cls: '' };
+                    recs.set(r.id, o);
+                }
+                const show = r.state !== 'hidden';
+                if (show !== o.shown) {
+                    show ? o.m.addTo(map) : o.m.remove();
+                    o.shown = show;
+                }
+                const node = o.m.getElement() && o.m.getElement().querySelector('.dot');
+                const cls = dotClass(r);
+                if (node && node.className !== cls) node.className = cls;
+            });
+            (view.facilities || []).forEach((f) => {
+                let o = facs.get(f.key);
+                if (!o) {
+                    const circle = L.circle([f.lat, f.lon], { radius: f.radius, color: f.green ? '#15803d' : '#475569', weight: 1, fillColor: f.green ? '#22c55e' : '#64748b', fillOpacity: f.green ? 0.3 : 0.55, interactive: false });
+                    const label = L.marker([f.lat, f.lon], {
+                        icon: icon(`<div class="fac${f.green ? ' fac-green' : ''}"><span class="fac-emoji">${f.emoji}</span><span class="fac-text">${esc(f.text)}</span>${f.count > 1 ? `<span class="fac-count">×${f.count}</span>` : ''}</div>`),
+                        interactive: false,
+                        zIndexOffset: 1000,
+                    });
+                    o = { circle, label, shown: false };
+                    facs.set(f.key, o);
+                }
+                if (f.visible !== o.shown) {
+                    if (f.visible) {
+                        o.circle.addTo(map);
+                        o.label.addTo(map);
+                    } else {
+                        o.circle.remove();
+                        o.label.remove();
+                    }
+                    o.shown = f.visible;
+                }
+            });
+            (view.newcomers || []).forEach((n) => {
+                let o = news.get(n.id);
+                if (!o) {
+                    const m = L.marker([n.lat, n.lon], { icon: icon(`<div class="newcomer">★<span>${esc(n.name)}</span></div>`), zIndexOffset: 2000 });
+                    if (onPick) m.on('click', () => onPick({ ...n, state: 'new' }));
+                    o = { m, shown: false };
+                    news.set(n.id, o);
+                }
+                if (n.visible !== o.shown) {
+                    n.visible ? o.m.addTo(map) : o.m.remove();
+                    o.shown = n.visible;
+                }
+            });
+        },
+        clear() {
+            recs.forEach((o) => o.m.remove());
+            facs.forEach((o) => {
+                o.circle.remove();
+                o.label.remove();
+            });
+            news.forEach((o) => o.m.remove());
+            recs.clear();
+            facs.clear();
+            news.clear();
+            if (areaCircle) areaCircle.remove();
+            areaCircle = null;
+        },
+    };
 }
 
 function dotClass(r) {

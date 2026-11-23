@@ -557,7 +557,100 @@ input[type='radio'] {
     font-weight: 700;
 }
 
-/* ===== 2차시: 지도 ===== */
+/* ===== 2차시: 지도 (위 줄 · 가운데 줄 · 아래 줄) ===== */
+.hud-stack {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    top: 0;
+    pointer-events: none;
+}
+.hud-top {
+    position: absolute;
+    z-index: 20;
+    left: 16px;
+    right: 16px;
+    top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    pointer-events: none;
+}
+.hud-top > *,
+.hud-row2 > *,
+.hud-bottom > * {
+    pointer-events: auto;
+}
+.hud-top .hud-tl {
+    position: static;
+}
+.hud-row2 {
+    position: absolute;
+    z-index: 20;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    pointer-events: none;
+}
+.map-screen .alerts {
+    position: absolute;
+    z-index: 21;
+    right: 16px;
+    top: 80px;
+}
+.hud-bottom {
+    position: absolute;
+    z-index: 20;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+.hud-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10px;
+}
+.lbl-s {
+    display: none;
+}
+.leaflet-container {
+    font-family: var(--font);
+}
+.lf-icon {
+    background: none !important;
+    border: 0 !important;
+}
+.lf-center {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    width: max-content;
+}
+/* 지도 조작 버튼·출처 표시가 위·아래 버튼에 가리지 않게 */
+.map-screen .leaflet-top {
+    top: 76px;
+}
+.map-screen .leaflet-bottom {
+    bottom: 84px;
+}
+.map-screen .leaflet-control-attribution {
+    font-size: 10px;
+}
+
 .main-map {
     position: absolute;
     inset: 0;
@@ -692,11 +785,6 @@ input[type='radio'] {
 }
 
 .map-legend {
-    position: absolute;
-    z-index: 15;
-    left: 50%;
-    bottom: 96px;
-    transform: translateX(-50%);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -710,8 +798,6 @@ input[type='radio'] {
     max-width: calc(100% - 32px);
 }
 .map-legend.inline {
-    position: static;
-    transform: none;
     background: none;
     padding: 6px 0 0;
     justify-content: flex-start;
@@ -1666,10 +1752,10 @@ body.demo .demo-ribbon {
     position: fixed;
     z-index: 400;
     left: 50%;
-    bottom: 0;
+    top: 0;
     transform: translateX(-50%);
-    padding: 2px 12px;
-    border-radius: 10px 10px 0 0;
+    padding: 1px 12px;
+    border-radius: 0 0 10px 10px;
     background: #f59e0b;
     color: #fff;
     font-size: 12px;
@@ -1705,18 +1791,137 @@ body.demo .demo-ribbon {
         top: auto;
         bottom: 160px;
     }
-    .map-legend {
-        bottom: 92px;
+    /* 2차시 지도: 좁은 화면 — 위쪽은 차례로 쌓음 */
+    .hud-stack {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
-    .btn-big {
+    .hud-stack .hud-top,
+    .hud-stack .hud-row2,
+    .hud-stack .alerts {
+        position: static;
+        transform: none;
+    }
+    .map-screen .class-name {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .map-screen .class-who {
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .map-screen .class-actions .btn {
+        min-height: 34px;
+        padding: 4px 10px;
+    }
+    .bell {
+        width: 46px;
+        height: 46px;
+        font-size: 21px;
+        flex: none;
+    }
+    .map-screen .class-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 0 10px;
+        min-width: 0;
+        max-width: none;
+        padding: 8px 12px;
+    }
+    .map-screen .class-who {
+        margin: 0;
+    }
+    .map-screen .class-actions {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+    .hud-top .hud-tl {
+        flex: 1;
+        min-width: 0;
+    }
+    .hud-row2 {
+        justify-content: space-between;
+    }
+    .hud-row2 .seg button {
+        min-height: 40px;
+        padding: 6px 16px;
+        font-size: 15px;
+    }
+    .map-screen .alerts {
+        width: auto;
+        gap: 5px;
+        pointer-events: auto;
+    }
+    .alert-card {
+        grid-template-columns: 26px 1fr auto;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 14px;
+    }
+    .alert-icon {
+        font-size: 18px;
+    }
+    .alert-text {
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .alert-value {
+        font-size: 15px;
+    }
+    .hud-bottom {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        gap: 8px;
+    }
+    .hud-bar .btn {
+        flex: 1;
         min-height: 54px;
-        padding: 10px 16px;
+        padding: 8px 10px;
         font-size: 16px;
     }
-    .hud-lm {
-        top: auto;
-        bottom: 90px;
-        transform: none;
+    .lbl-l {
+        display: none;
+    }
+    .lbl-s {
+        display: inline;
+    }
+    .map-legend {
+        gap: 3px 10px;
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .map-screen .leaflet-control-zoom {
+        display: none; /* 손가락으로 확대 */
+    }
+    .map-screen .leaflet-bottom {
+        bottom: 130px;
+    }
+    .fac {
+        font-size: 11px;
+        padding: 2px 7px 2px 4px;
+    }
+    .fac-emoji {
+        font-size: 15px;
+    }
+    .fac-text,
+    .fac-count {
+        display: none; /* 좁은 화면에서는 그림만 (이름은 [💭 키워드]·비교 화면에서) */
+    }
+    .newcomer {
+        font-size: 17px;
+    }
+    .newcomer span {
+        font-size: 10px;
     }
 }
 @media (max-width: 560px) {

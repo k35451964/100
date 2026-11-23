@@ -14,6 +14,8 @@ function futureAvailable() {
 }
 
 async function showMapScreen() {
+    const token = (MS.token = (MS.token || 0) + 1); // 연달아 불리면 마지막 것만 지도를 만듦
+    MS.map = null;
     APP.screen = 'map';
     MS.view = 'now';
     MS.alertsShown = false;
@@ -22,17 +24,25 @@ async function showMapScreen() {
         <div class="screen map-screen">
             <div id="main-map" class="main-map"></div>
             <div class="heat-tint" id="heat-tint"></div>
-            <div class="hud-tl">${headerHtml()}</div>
-            <div class="hud-tc" id="view-toggle"></div>
-            <div class="hud-tr">
+            <div class="hud-stack">
+            <div class="hud-top">
+                <div class="hud-tl">${headerHtml()}</div>
                 <button class="bell" id="bell" title="알림" hidden>!<span id="bell-count"></span></button>
-                <div class="alerts" id="alerts"></div>
             </div>
-            <div class="hud-lm"><button class="btn btn-float" id="btn-keywords">💭 키워드</button></div>
-            <div class="hud-bl"><button class="btn btn-float btn-big" id="btn-compare">⚖️ 시뮬레이션 전과 비교</button></div>
-            <div class="hud-br"><button class="btn btn-float btn-big btn-violet" id="btn-gallery">🖼️ 발표</button></div>
-            ${teacher ? '<div class="hud-bc"><button class="btn btn-float btn-big btn-hot" id="btn-play">▶ 미래 보기</button></div>' : ''}
-            <div class="map-legend" id="map-legend"></div>
+            <div class="hud-row2">
+                <div id="view-toggle"></div>
+                <button class="btn btn-float btn-small-m" id="btn-keywords">💭 <span class="lbl">키워드</span></button>
+            </div>
+            <div class="alerts collapsed" id="alerts"></div>
+            </div>
+            <div class="hud-bottom">
+                <div class="map-legend" id="map-legend"></div>
+                <div class="hud-bar">
+                    <button class="btn btn-float btn-big" id="btn-compare">⚖️ <span class="lbl-l">시뮬레이션 전과 비교</span><span class="lbl-s">비교</span></button>
+                    ${teacher ? '<button class="btn btn-float btn-big btn-hot" id="btn-play">▶ <span class="lbl-l">미래 보기</span><span class="lbl-s">미래</span></button>' : ''}
+                    <button class="btn btn-float btn-big btn-violet" id="btn-gallery">🖼️ 발표</button>
+                </div>
+            </div>
             <div class="map-status" id="map-status">생태지도 기록을 불러오는 중… 🌿</div>
             <div class="caption" id="caption" hidden></div>
             <div class="temp-counter" id="temp-counter" hidden></div>
@@ -54,9 +64,11 @@ async function showMapScreen() {
         $('map-status').textContent = `기록을 불러오지 못했어요: ${friendlyError(err)}`;
         return;
     }
-    if (APP.screen !== 'map') return;
-    MS.map = await createMap($('main-map'), { center: d.center, radius: APP.cls.radius_m, onPick: showPick });
-    if (APP.screen !== 'map') return;
+    if (APP.screen !== 'map' || token !== MS.token) return;
+    const map = await createMap($('main-map'), { center: d.center, radius: APP.cls.radius_m, onPick: showPick });
+    if (APP.screen !== 'map' || token !== MS.token) return;
+    MS.map = map;
+    MS.drawnFuture = null;
     window.onresize = debounce(() => MS.map && MS.map.relayout(), 200);
     $('map-status').textContent = d.records.length ? '' : '이 학반의 생태지도 기록이 아직 없어요. (교사: ⚙️ 관리 → 지도·기록에서 출처 확인)';
     $('map-status').hidden = !!d.records.length;
@@ -259,6 +271,8 @@ async function showAlerts() {
         await sleep(900);
         if (APP.screen !== 'map') return;
     }
+    // 좁은 화면에서는 지도를 가리지 않게 잠시 뒤 접음 (! 버튼으로 다시 보기)
+    if (window.innerWidth <= 820) setTimeout(() => box.classList.add('collapsed'), 5000);
 }
 function hideAlerts() {
     const box = $('alerts');
