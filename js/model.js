@@ -15,6 +15,10 @@ const LOST_AT = 0.3; // 이보다 작으면 사라짐
 const DOWN_AT = 0.85; // 이 이하면 일부 사라짐
 const UP_AT = 1.15;
 const MAX_NEW_SPECIES = 8;
+const COVER_LOST_AT = 0.9; // 선·면 기록이 이만큼 이상 덮이면 서식지 상실, 그보다 적으면 '일부 남음'
+const LINE_STEP_M = 2; // 선은 2m마다 점을 찍어 셈
+const AREA_STEP_M = 3; // 면은 3m 간격 점으로 채워 셈
+const MAX_SAMPLES = 4000; // 아주 큰 면은 간격을 넓혀 이 개수 안으로
 
 // ===== 날짜 =====
 
@@ -227,6 +231,43 @@ function placeFacilities(items, habitatPts, center, radiusM, rng) {
     return placed;
 }
 
+// 기록 하나가 차지하는 자리를 점들로 (학교 가운데 기준 m)
+function recordSamples(r, proj) {
+    if (!r.coords || r.shape === 'point') return [proj.toXY(r)];
+    const pts = r.coords.map((c) => proj.toXY(c));
+    if (r.shape === 'line') {
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1];
+            const b = pts[i];
+            const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / LINE_STEP_M));
+            for (let k = 1; k <= n; k++) out.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n });
+        }
+        return out.length > MAX_SAMPLES ? out.filter((_, i) => i % Math.ceil(out.length / MAX_SAMPLES) === 0) : out;
+    }
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const x0 = Math.min(...xs);
+    const x1 = Math.max(...xs);
+    const y0 = Math.min(...ys);
+    const y1 = Math.max(...ys);
+    const step = Math.max(AREA_STEP_M, Math.sqrt(((x1 - x0) * (y1 - y0)) / MAX_SAMPLES));
+    const out = [];
+    for (let x = x0 + step / 2; x <= x1; x += step) {
+        for (let y = y0 + step / 2; y <= y1; y += step) if (insidePolygon(x, y, pts)) out.push({ x, y });
+    }
+    return out.length ? out : pts; // 아주 작은 면은 꼭짓점으로
+}
+function insidePolygon(x, y, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const a = pts[i];
+        const b = pts[j];
+        if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+}
+
 // 여러 원이 덮는 넓이(㎡) — 5m 칸으로 셈
 function unionArea(circles) {
     const cells = new Set();
@@ -308,25 +349,44 @@ function buildFuture(input) {
     // ① 시설 배치와 서식지 상실
     const groups = groupKeywords(input.keywords || []);
     const items = keywordItems(groups, input.analysis);
+    // 기록마다 덮였는지 셀 점들: 점은 그 자리, 선은 2m마다, 면은 3m 간격으로 채움
+    const samples = new Map();
+    study.forEach((r) => hasLoc(r) && samples.set(r.id, recordSamples(r, proj)));
     const habitatPts = [];
     const cellSet = new Set();
-    study.forEach((r) => {
-        if (!hasLoc(r)) return;
-        const p = proj.toXY(r);
-        const key = `${Math.floor(p.x / CELL_M)},${Math.floor(p.y / CELL_M)}`;
-        if (!cellSet.has(key)) {
+    samples.forEach((pts) =>
+        pts.forEach((p) => {
+            const key = `${Math.floor(p.x / CELL_M)},${Math.floor(p.y / CELL_M)}`;
+            if (cellSet.has(key)) return;
             cellSet.add(key);
             habitatPts.push({ x: (Math.floor(p.x / CELL_M) + 0.5) * CELL_M, y: (Math.floor(p.y / CELL_M) + 0.5) * CELL_M });
-        }
-    });
+        })
+    );
     const facilities = placeFacilities(items, habitatPts, center, radiusM, rng);
     const built = facilities.filter((f) => f.category !== 'green');
     const greens = facilities.filter((f) => f.category === 'green');
-    const insideBuilt = (x, y) => built.some((f) => Math.hypot(f.x - x, f.y - y) <= f.radius);
+    const coveringFac = (x, y) => built.findIndex((f) => Math.hypot(f.x - x, f.y - y) <= f.radius);
+    const insideBuilt = (x, y) => coveringFac(x, y) >= 0;
     const lostCells = habitatPts.filter((c) => insideBuilt(c.x, c.y)).length;
     const builtArea = unionArea(built);
     const greenArea = unionArea(greens);
     const circleArea = Math.PI * radiusM * radiusM;
+    // 덮인 비율 c와, 가장 많이 덮은 시설
+    const coverOf = (r) => {
+        const pts = samples.get(r.id);
+        if (!pts || !pts.length || !built.length) return { cover: 0, fac: -1 };
+        const hits = new Array(built.length).fill(0);
+        let covered = 0;
+        pts.forEach((p) => {
+            const i = coveringFac(p.x, p.y);
+            if (i >= 0) {
+                covered++;
+                hits[i]++;
+            }
+        });
+        const fac = covered ? hits.indexOf(Math.max(...hits)) : -1;
+        return { cover: covered / pts.length, fac };
+    };
 
     // ② 열섬, ③ 기후변화
     const heatIsland = HEAT_ISLAND.fullUrbanC * Math.min(1, Math.max(0, builtArea - greenArea) / circleArea);
@@ -347,26 +407,40 @@ function buildFuture(input) {
     const seed = input.seed || 1;
 
     const fates = study.map((r) => {
-        if (hasLoc(r)) {
-            const p = proj.toXY(r);
-            if (insideBuilt(p.x, p.y)) return { rec: r, fate: 'habitat' };
-        }
+        const { cover, fac } = coverOf(r);
+        const base = { rec: r, cover, fac, facKey: fac >= 0 ? built[fac].key : null };
+        if (cover >= COVER_LOST_AT || (cover > 0 && r.shape === 'point')) return { ...base, cover: 1, fate: 'habitat' };
+        const partial = cover > 0; // 일부 남음: 덮이지 않은 부분이 다음 단계(기온)를 거침
         let T = hasLoc(r) ? localTempAt(grid, r.lat, r.lon, r.doy) : NaN;
         if (!isNum(T) && hasTemp(r)) T = r.tavg;
-        if (!isNum(T)) return { rec: r, fate: 'unknown' };
+        if (!isNum(T)) return { ...base, partial, fate: 'unknown' };
         let niche = nicheAt(bySpecies.get(r.name) || [], r.doy);
         let fromGroup = false;
         if (!nicheOk(niche)) {
             niche = nicheAt(byType.get(r.type) || [], r.doy, true);
             fromGroup = true;
-            if (!nicheOk(niche)) return { rec: r, fate: 'unknown', T };
+            if (!nicheOk(niche)) return { ...base, partial, fate: 'unknown', T };
         }
         const ratio = suitabilityRatio(T, dT, niche);
         let fate = 'ok';
         if (ratio < LOST_AT) fate = 'heat';
         else if (ratio <= DOWN_AT) fate = hash01(seed, r.id) < 1 - ratio ? 'heat' : 'weak';
         else if (ratio >= UP_AT) fate = 'up';
-        return { rec: r, fate, T, niche, ratio, fromGroup };
+        // 견딜 수 있는 기온 상승 폭(지금 기온 → 견딘 범위의 위쪽 끝). 연출에서 사라지는 차례로 씀
+        const margin = niche.hi - T;
+        return { ...base, partial: partial && fate !== 'heat', fate, T, niche, ratio, fromGroup, margin };
+    });
+
+    // 시설마다 그 자리에서 사라지거나 일부만 남은 생물 (연출 자막용)
+    built.forEach((f) => {
+        f.lostNames = [];
+        f.partialNames = [];
+    });
+    fates.forEach((x) => {
+        if (x.fac < 0) return;
+        const f = built[x.fac];
+        const list = x.fate === 'habitat' ? f.lostNames : f.partialNames;
+        if (!list.includes(x.rec.name)) list.push(x.rec.name);
     });
 
     const newcomers = findNewcomers(study, all, bySpecies, grid, dT, center, radiusM, habitatPts, built, proj, rng);
@@ -417,13 +491,14 @@ function summarize(ctx) {
     const speciesMap = new Map();
     fates.forEach((f) => {
         const r = f.rec;
-        if (!speciesMap.has(r.name)) speciesMap.set(r.name, { name: r.name, type: r.type, sci: r.sci, imageUrl: '', now: 0, future: 0, fates: {}, lo: NaN, hi: NaN, fromGroup: false, firstDoy: 999 });
+        if (!speciesMap.has(r.name)) speciesMap.set(r.name, { name: r.name, type: r.type, sci: r.sci, imageUrl: '', now: 0, future: 0, partial: 0, fates: {}, lo: NaN, hi: NaN, fromGroup: false, firstDoy: 999 });
         const s = speciesMap.get(r.name);
         s.now++;
         if (!s.imageUrl && r.imageUrl) s.imageUrl = r.imageUrl;
         if (!s.sci && r.sci) s.sci = r.sci;
         s.fates[f.fate] = (s.fates[f.fate] || 0) + 1;
         if (f.fate !== 'habitat' && f.fate !== 'heat') s.future++;
+        if (f.partial) s.partial++;
         if (f.niche && !isNum(s.lo)) {
             s.lo = f.niche.lo;
             s.hi = f.niche.hi;
@@ -433,7 +508,7 @@ function summarize(ctx) {
     });
     const species = [...speciesMap.values()];
     species.forEach((s) => {
-        s.status = s.future === 0 ? 'gone' : s.future < s.now ? 'declined' : 'survived';
+        s.status = s.future === 0 ? 'gone' : s.future < s.now || s.partial > 0 ? 'declined' : 'survived';
         s.indicator = typeof isClimateIndicator === 'function' && isClimateIndicator(s.name, s.sci);
     });
     newcomers.forEach((n) => (n.indicator = typeof isClimateIndicator === 'function' && isClimateIndicator(n.name, n.sci)));
@@ -502,10 +577,11 @@ function summarize(ctx) {
             newcomers: newcomers.length,
             lostHabitat: fates.filter((f) => f.fate === 'habitat').length,
             lostHeat: fates.filter((f) => f.fate === 'heat').length,
+            partial: fates.filter((f) => f.partial).length,
         },
     };
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = { parseObsDate, normalizeRecord, groupKeywords, keywordItems, classifyByRules, buildFuture, formatDoy };
+    module.exports = { recordSamples, parseObsDate, normalizeRecord, groupKeywords, keywordItems, classifyByRules, buildFuture, formatDoy };
 }

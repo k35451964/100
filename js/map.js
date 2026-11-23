@@ -175,11 +175,12 @@ function dotClass(r) {
     return `dot dot-${r.state}`;
 }
 
-// 선·면 기록의 모양 (생태지도와 같게: 면은 종류 색 40% 채움, 선은 굵은 선 / 사라지면 회색 점선)
+// 선·면 기록의 모양 (생태지도와 같게: 면은 종류 색 40% 채움, 선은 굵은 선 / 사라지면 회색 점선 / 일부만 남으면 옅은 점선)
 function shapeLook(r) {
     const gone = r.state === 'gone';
+    const partial = r.state === 'partial';
     const color = gone ? '#9ca3af' : TYPE_COLOR[r.type] || '#64748b';
-    return { key: `${r.state}`, color, gone, fillOpacity: gone ? 0.18 : 0.4, weight: r.shape === 'area' ? 2 : 4 };
+    return { key: `${r.state}`, color, gone: gone || partial, fillOpacity: gone ? 0.18 : partial ? 0.2 : 0.4, weight: r.shape === 'area' ? 2 : 4 };
 }
 
 // ===== 카카오맵 =====

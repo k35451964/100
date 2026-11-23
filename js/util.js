@@ -85,6 +85,16 @@ function debounce(fn, ms) {
     };
 }
 
+// 한국어 조사: josa('쑥', '이', '가') → '이', josa('개망초', '이', '가') → '가'
+function josa(word, withFinal, withoutFinal) {
+    const ch = String(word || '').trim().slice(-1);
+    const code = ch.charCodeAt(0);
+    if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 ? withFinal : withoutFinal;
+    if (/[0-9]/.test(ch)) return '013678'.includes(ch) ? withFinal : withoutFinal;
+    if (/[a-z]/i.test(ch)) return /[lmnr]/i.test(ch) ? withFinal : withoutFinal;
+    return `${withFinal}(${withoutFinal})`;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 서버 오류를 알아듣기 쉬운 말로

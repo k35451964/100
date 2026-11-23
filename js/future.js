@@ -45,6 +45,7 @@ async function showMapScreen() {
             </div>
             <div class="map-status" id="map-status">생태지도 기록을 불러오는 중… 🌿</div>
             <div class="caption" id="caption" hidden></div>
+            <div class="subtitle" id="subtitle" aria-live="polite" hidden></div>
             <div class="temp-counter" id="temp-counter" hidden></div>
         </div>`;
     bindHeader();
@@ -105,17 +106,18 @@ function mapView(stage = null) {
     const d = APP.data;
     if (!f || !d) return { records: [] };
     const future = MS.view === 'future';
-    const fateById = new Map(f.fates.map((x) => [x.rec.id, x.fate]));
+    const fateById = new Map(f.fates.map((x) => [x.rec.id, x]));
     const records = d.records
         .filter((r) => fin(r.lat))
         .map((r) => {
             let state = 'now';
+            const x = fateById.get(r.id);
             if (future || stage) {
-                const fate = fateById.get(r.id);
-                const gone = fate === 'habitat' || fate === 'heat';
-                state = stage ? (stage.gone.has(r.id) ? 'gone' : 'ok') : gone ? 'gone' : 'ok';
+                const gone = x && (x.fate === 'habitat' || x.fate === 'heat');
+                if (stage) state = stage.gone.has(r.id) ? 'gone' : stage.partial.has(r.id) ? 'partial' : 'ok';
+                else state = gone ? 'gone' : x && x.partial ? 'partial' : 'ok';
             }
-            return { id: r.id, lat: r.lat, lon: r.lon, type: r.type, name: r.name, state, shape: r.shape, coords: r.coords };
+            return { id: r.id, lat: r.lat, lon: r.lon, type: r.type, name: r.name, state, shape: r.shape, coords: r.coords, cover: x ? x.cover : 0 };
         });
     const facilities = f.facilities.map((x) => ({
         key: x.key,
@@ -140,8 +142,9 @@ function drawMap(stage = null) {
     }
     MS.map.render(mapView(stage));
     const future = MS.view === 'future' || !!stage;
+    const anyPartial = stage ? stage.partial.size > 0 : APP.future && APP.future.counts.partial > 0;
     $('map-legend').innerHTML = future
-        ? '<span><i class="lg lg-ok"></i>남은 생물</span><span><i class="lg lg-gone">✕</i>사라진 생물</span><span><i class="lg lg-new">★</i>새로 온 생물</span><span><i class="lg lg-fac"></i>새로 생긴 시설</span>'
+        ? `<span><i class="lg lg-ok"></i>남은 생물</span>${anyPartial ? '<span><i class="lg lg-part"></i>일부만 남은 생물</span>' : ''}<span><i class="lg lg-gone">✕</i>사라진 생물</span><span><i class="lg lg-new">★</i>새로 온 생물</span><span><i class="lg lg-fac"></i>새로 생긴 시설</span>`
         : Object.keys(TYPE_COLOR).map((t) => `<span><i class="lg" style="background:${TYPE_COLOR[t]}"></i>${typeEmoji(t)} ${t}</span>`).join('');
     $('heat-tint').style.opacity = future && !stage ? '0.28' : $('heat-tint').style.opacity;
     if (!future && !stage) $('heat-tint').style.opacity = '0';
@@ -151,6 +154,7 @@ function showPick(r) {
     let state = '';
     if (r.state === 'new') state = '★ 새로 온 생물';
     else if (r.state === 'gone') state = '✕ 사라짐';
+    else if (r.state === 'partial') state = `◐ 일부만 남음 (시설이 ${Math.round((r.cover || 0) * 100)}% 덮음)`;
     else if (r.state === 'ok') state = '살아남음';
     const rec = APP.data && APP.data.records.find((x) => x.id === r.id);
     const ind = isClimateIndicator(r.name, (rec && rec.sci) || r.sci) ? ' · 🌡️ 기후변화 생물지표종' : '';
@@ -158,69 +162,167 @@ function showPick(r) {
 }
 
 // ===== 미래 보기 연출 (교사 화면, 전자칠판) =====
+// 자막 한 줄에 들어갈 생물 이름들: "개망초, 쑥" / "개망초, 쑥, 강아지풀 등 5종" + 조사
+function nameList(names, withFinal, withoutFinal) {
+    const shown = names.slice(0, 3);
+    const more = names.length > 3 ? ` 등 ${names.length}종` : '';
+    const last = more ? '종' : shown[shown.length - 1];
+    return `<b>${shown.map(esc).join(', ')}${more}</b>${josa(last, withFinal, withoutFinal)}`;
+}
+
+// 기온이 오르는 동안 사람들의 삶 (기온 상승 단계마다 한 줄)
+function peopleLines(w, hotDays) {
+    return [
+        `여름이 길어지고, 폭염일이 1년에 약 <b>${hotDays}일</b>로 늘어난다`,
+        '밤에도 기온이 떨어지지 않아 잠 못 드는 밤(열대야)이 잦아진다',
+        '사람들은 한낮 바깥 활동을 줄이고 에어컨을 더 오래 켠다',
+        `봄꽃이 지금보다 약 <b>${Math.round(PHENOLOGY.springDaysPerC * w)}일</b> 빨리 핀다`,
+        '더위로 쓰러지는 사람(온열질환자)이 늘어난다',
+        '냉방에 쓰는 전기가 늘어, 온실가스도 더 나온다',
+    ];
+}
+
+const PLAY_ABORT = { abort: true };
 async function playFuture() {
     if (MS.playing) return;
     if (!APP.keywords.length) return toast('1차시 키워드가 없어요.', 'error');
     MS.playing = true;
     $('btn-play').disabled = true;
     hideAlerts();
+    try {
+        await runFuturePlay();
+    } catch (err) {
+        if (err !== PLAY_ABORT) throw err; // 연출 중 다른 화면으로 나가면 조용히 멈춤
+    } finally {
+        MS.playing = false;
+        if ($('btn-play')) $('btn-play').disabled = false;
+    }
+}
+
+async function runFuturePlay() {
+    const token = MS.token;
     const f = await ensureFuture();
-    const d = APP.data;
-    const stage = { facilities: new Set(), gone: new Set(), newcomers: false };
+    const stage = { facilities: new Set(), gone: new Set(), partial: new Set(), newcomers: false };
     const cap = $('caption');
+    const sub = $('subtitle');
     const counter = $('temp-counter');
     const tint = $('heat-tint');
-    const say = async (html, ms) => {
-        cap.innerHTML = html;
-        cap.hidden = false;
-        cap.classList.remove('show');
-        void cap.offsetWidth;
-        cap.classList.add('show');
+    // 화면이 바뀌면(다른 화면, 지도 새로 그림) 연출을 멈춤
+    const wait = async (ms) => {
         await sleep(ms);
+        if (APP.screen !== 'map' || token !== MS.token || !document.body.contains(cap)) throw PLAY_ABORT;
+    };
+    const pop = (el, html) => {
+        el.innerHTML = html;
+        el.hidden = false;
+        el.classList.remove('show');
+        void el.offsetWidth;
+        el.classList.add('show');
+    };
+    const say = async (html, ms) => {
+        pop(cap, html);
+        await wait(ms);
+    };
+    // 아래쪽 자막: 버튼 줄 바로 위
+    const line = async (html, ms) => {
+        const bottom = document.querySelector('.hud-bottom');
+        sub.style.bottom = `${(bottom ? bottom.offsetHeight : 100) + 26}px`;
+        pop(sub, html);
+        await wait(ms);
     };
     MS.view = 'future';
     renderViewToggle();
     tint.style.opacity = '0';
+    sub.hidden = true;
     drawMap(stage);
     await say(`1차시에 우리가 바랐던 것들이<br><b>학교 주변에 생기면…</b>`, 2600);
     cap.hidden = true;
 
-    // ① 시설이 하나씩 생기며 그 자리 생물이 사라짐
+    // ① 시설이 하나씩 생기며 그 자리 생물이 사라짐 (자막: 이 자리에서 사라진 생물)
     const order = f.facilities.slice().sort((a, b) => a.count - b.count);
-    const step = Math.max(160, Math.min(700, 7000 / Math.max(1, order.length)));
-    const habitatGone = f.fates.filter((x) => x.fate === 'habitat' && fin(x.rec.lat)).map((x) => x.rec);
+    const talks = (fac) => fac.category === 'green' || (fac.lostNames || []).length || (fac.partialNames || []).length;
+    const talkStep = Math.max(1100, Math.min(1700, 17000 / Math.max(1, order.filter(talks).length)));
+    const quietStep = Math.max(250, Math.min(600, 5000 / Math.max(1, order.length)));
     for (const fac of order) {
         stage.facilities.add(fac.key);
-        if (fac.category !== 'green') habitatGone.forEach((r) => distMeters(r, fac) <= fac.radius + 3 && stage.gone.add(r.id));
+        f.fates.forEach((x) => {
+            if (x.facKey !== fac.key) return;
+            if (x.fate === 'habitat') stage.gone.add(x.rec.id);
+            else if (x.cover > 0) stage.partial.add(x.rec.id); // 덮이지 않은 부분은 다음 단계(기온)로
+        });
         drawMap(stage);
-        await sleep(step);
+        const emoji = KEYWORD_CATEGORIES[fac.category].emoji;
+        const what = `${emoji} <b>${esc(fac.text)}</b>${josa(fac.text, '이', '가')}`;
+        const lost = fac.lostNames || [];
+        const part = (fac.partialNames || []).filter((n) => !lost.includes(n));
+        if (fac.category === 'green') await line(`${what} 생겼습니다`, talkStep);
+        else if (lost.length || part.length) {
+            const lines = [];
+            if (lost.length) lines.push(`${what} 들어서며 이 자리의 ${nameList(lost, '이', '가')} 사라졌습니다`);
+            if (part.length) lines.push(`${lost.length ? '' : `${what} 들어서며 `}${nameList(part, '은', '는')} 서식지 일부만 남았습니다`);
+            await line(lines.map((t, i) => (i ? `<small>${t}</small>` : t)).join('<br>'), talkStep);
+        } else await wait(quietStep);
     }
-    habitatGone.forEach((r) => stage.gone.add(r.id)); // 경계에 걸친 기록까지
+    f.fates.forEach((x) => x.fate === 'habitat' && stage.gone.add(x.rec.id)); // 혹시 빠진 기록까지
     drawMap(stage);
-    await sleep(600);
+    await line(`시설이 들어선 자리에서 생물 기록 <b>${f.counts.lostHabitat}건</b>이 사라졌습니다${f.counts.partial ? `<br><small>${f.counts.partial}건은 서식지 일부만 남았습니다</small>` : ''}`, 2400);
+    sub.hidden = true;
 
-    // ② 2100년까지 기온 상승 (+ 열섬)
+    // ② 2100년까지 기온 상승 (+ 열섬). 견딘 범위를 먼저 넘는 생물부터 사라짐
     await say(`그리고 ${esc(SCENARIO.period)},<br>온실가스를 계속 많이 내뿜는다면 <b>(고탄소 시나리오)</b>`, 2800);
     cap.hidden = true;
     counter.hidden = false;
-    const heatGone = f.fates.filter((x) => x.fate === 'heat').map((x) => x.rec.id);
-    const steps = 30;
-    for (let i = 1; i <= steps; i++) {
-        const k = i / steps;
-        counter.innerHTML = `🌡️ <b>+${(f.env.dT * k).toFixed(1)}℃</b><small>${esc(SCENARIO.short)}</small>`;
-        tint.style.opacity = String(0.32 * k);
-        heatGone.slice(0, Math.round(heatGone.length * k)).forEach((id) => stage.gone.add(id));
-        drawMap(stage);
-        await sleep(110);
+    const dT = f.env.dT;
+    // 살기 좋은 정도가 85% 아래로 떨어지는 때 = 견딘 범위 위쪽 끝을 1.7℃ 넘을 때 (σ = 3℃)
+    const heat = f.fates
+        .filter((x) => x.fate === 'heat')
+        .map((x) => ({ id: x.rec.id, name: x.rec.name, at: Math.min(dT, Math.max(0.2, (fin(x.margin) ? x.margin : dT) + 1.7)) }))
+        .sort((a, b) => a.at - b.at);
+    const statusOf = new Map(f.species.map((s) => [s.name, s.status]));
+    const beats = 6;
+    const sub8 = 8;
+    const shownNames = new Set();
+    for (let b = 1; b <= beats; b++) {
+        const newly = [];
+        for (let i = 1; i <= sub8; i++) {
+            const k = (b - 1 + i / sub8) / beats;
+            const w = dT * k;
+            const hot = Math.round(LOCAL_CLIMATE.hotDaysNow + (LOCAL_CLIMATE.hotDaysFuture - LOCAL_CLIMATE.hotDaysNow) * k);
+            counter.innerHTML = `🌡️ <b>+${w.toFixed(1)}℃</b><small>폭염일 약 ${hot}일</small>`;
+            tint.style.opacity = String(0.32 * k);
+            heat.forEach((h) => {
+                if (h.at <= w + 1e-9 && !stage.gone.has(h.id)) {
+                    stage.gone.add(h.id);
+                    newly.push(h.name);
+                }
+            });
+            drawMap(stage);
+            await wait(90);
+        }
+        const k = b / beats;
+        const hot = Math.round(LOCAL_CLIMATE.hotDaysNow + (LOCAL_CLIMATE.hotDaysFuture - LOCAL_CLIMATE.hotDaysNow) * k);
+        const people = peopleLines(dT * k, hot)[b - 1];
+        const names = [...new Set(newly)].filter((n) => !shownNames.has(n));
+        names.forEach((n) => shownNames.add(n));
+        const gone = names.filter((n) => statusOf.get(n) === 'gone');
+        const fewer = names.filter((n) => statusOf.get(n) !== 'gone');
+        let top = '';
+        if (gone.length) top = `🥵 더위를 견디지 못한 ${nameList(gone, '이', '가')} 사라졌습니다`;
+        else if (fewer.length) top = `🥵 더위로 ${nameList(fewer, '이', '가')} 줄어들었습니다`;
+        if (gone.length && fewer.length) top += `<br><small>${nameList(fewer, '은', '는')} 줄어들었습니다</small>`;
+        await line(top ? `${top}<br><small class="sub-people">👥 ${people}</small>` : `👥 ${people}`, top ? 3000 : 2300);
     }
-    await sleep(700);
+    sub.hidden = true;
+    await wait(400);
 
     // ③ 새로 온 생물
     if (f.newcomers.length) {
         stage.newcomers = true;
         drawMap(stage);
-        await say(`<b>★ 처음 보는 생물</b>이 나타났다`, 2200);
+        await say(`<b>★ 처음 보는 생물</b>이 나타났다`, 1800);
         cap.hidden = true;
+        await line(`★ 더 따뜻한 곳에 살던 ${nameList(f.newcomers.map((n) => n.name), '이', '가')} 우리 학교에 나타났습니다`, 3000);
+        sub.hidden = true;
     }
 
     // 정리
@@ -235,7 +337,6 @@ async function playFuture() {
     cap.hidden = true;
     counter.hidden = true;
     MS.playing = false;
-    $('btn-play').disabled = false;
     MS.view = 'future';
     renderViewToggle();
     drawMap();

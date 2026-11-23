@@ -830,6 +830,12 @@ input[type='radio'] {
     font-weight: 900;
     font-size: 16px;
 }
+.lg-part {
+    background: var(--brand-2);
+    opacity: 0.45;
+    border-style: dashed;
+    border-color: #475569;
+}
 .lg-new {
     background: none;
     border: 0;
@@ -886,6 +892,52 @@ input[type='radio'] {
     to {
         opacity: 1;
         transform: translate(-50%, -50%);
+    }
+}
+/* 미래 보기 동안 아래쪽 자막 (버튼 줄 바로 위) */
+.subtitle {
+    position: absolute;
+    z-index: 29;
+    left: 50%;
+    bottom: 130px;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: min(1000px, calc(100% - 32px));
+    padding: 12px 26px;
+    border-radius: 16px;
+    background: rgba(15, 23, 20, 0.82);
+    color: #fff;
+    text-align: center;
+    font-size: clamp(17px, 2.1vw, 28px);
+    font-weight: 700;
+    line-height: 1.45;
+    pointer-events: none;
+    word-break: keep-all;
+}
+.subtitle.show {
+    animation: subin 0.35s ease-out;
+}
+.subtitle b {
+    color: #fdba74;
+}
+.subtitle small {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+.subtitle .sub-people {
+    color: #bae6fd;
+}
+@keyframes subin {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
     }
 }
 .sum-title {
@@ -961,6 +1013,11 @@ input[type='radio'] {
     line-height: 16px;
     text-align: center;
     text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+.dot-partial {
+    opacity: 0.5;
+    border-style: dashed;
+    border-color: #334155;
 }
 .fac {
     display: flex;
@@ -1074,6 +1131,11 @@ input[type='radio'] {
 }
 .svg-dot.svg-gone path {
     display: block;
+}
+.svg-dot.svg-partial circle {
+    fill-opacity: 0.45;
+    stroke: #334155;
+    stroke-dasharray: 2 2;
 }
 .svg-dot.svg-hidden {
     display: none;
