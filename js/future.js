@@ -115,7 +115,7 @@ function mapView(stage = null) {
                 const gone = fate === 'habitat' || fate === 'heat';
                 state = stage ? (stage.gone.has(r.id) ? 'gone' : 'ok') : gone ? 'gone' : 'ok';
             }
-            return { id: r.id, lat: r.lat, lon: r.lon, type: r.type, name: r.name, state };
+            return { id: r.id, lat: r.lat, lon: r.lon, type: r.type, name: r.name, state, shape: r.shape, coords: r.coords };
         });
     const facilities = f.facilities.map((x) => ({
         key: x.key,

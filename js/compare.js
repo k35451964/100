@@ -78,6 +78,13 @@ function drawMini(svg, f, future) {
         if (!fin(r.lat)) return;
         const p = P(r);
         const gone = future && (x.fate === 'habitat' || x.fate === 'heat');
+        if (r.coords) {
+            const pts = r.coords.map((c) => P(c)).map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(' ');
+            const color = gone ? '#9ca3af' : TYPE_COLOR[r.type];
+            out += r.shape === 'area'
+                ? `<polygon points="${pts}" fill="${color}" fill-opacity="${gone ? 0.2 : 0.35}" stroke="${color}" stroke-width="1.5"${gone ? ' stroke-dasharray="4 3"' : ''}/>`
+                : `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"${gone ? ' stroke-dasharray="4 3"' : ''}/>`;
+        }
         out += gone
             ? `<text x="${p.x.toFixed(1)}" y="${(p.y + 4).toFixed(1)}" class="mini-gone">✕<title>${esc(r.name)}</title></text>`
             : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="${TYPE_COLOR[r.type]}" class="mini-dot"><title>${esc(r.name)}</title></circle>`;

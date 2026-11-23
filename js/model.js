@@ -103,14 +103,18 @@ function normalizeRecord(row, weather) {
     if (!name || PLACEHOLDER_NAMES.includes(name) || !RECORD_TYPES.includes(type)) return null;
     const date = parseObsDate(row.date, row.yearMonth);
     if (!date) return null;
+    // 점 / 선(이동 경로) / 면(군락) — 생태지도와 같게: 선은 가운데 꼭짓점, 면은 꼭짓점 평균을 기록 위치로
     let lat = toNum(row.lat);
     let lon = toNum(row.lon);
-    if (!isNum(lat) || !isNum(lon)) {
-        const pts = (row.path && Array.isArray(row.path.coords) ? row.path.coords : [])
-            .map((c) => ({ lat: toNum(c.lat), lon: toNum(c.lon) }))
-            .filter(hasLoc);
-        lat = pts.length ? meanOf(pts.map((p) => p.lat)) : NaN;
-        lon = pts.length ? meanOf(pts.map((p) => p.lon)) : NaN;
+    const coords = (row.path && Array.isArray(row.path.coords) ? row.path.coords : [])
+        .map((c) => ({ lat: toNum(c.lat), lon: toNum(c.lon) }))
+        .filter(hasLoc);
+    const shape = coords.length >= 2 && (row.path.shape === 'line' || row.path.shape === 'area') ? row.path.shape : 'point';
+    if (shape === 'line') {
+        ({ lat, lon } = coords[Math.floor(coords.length / 2)]);
+    } else if (shape === 'area' || ((!isNum(lat) || !isNum(lon)) && coords.length)) {
+        lat = meanOf(coords.map((p) => p.lat));
+        lon = meanOf(coords.map((p) => p.lon));
     }
     const w = weather && weather.status === 'ok' ? weather : null;
     return {
@@ -120,6 +124,8 @@ function normalizeRecord(row, weather) {
         type,
         lat,
         lon,
+        shape,
+        coords: shape === 'point' ? null : coords,
         year: date.year,
         doy: date.doy,
         iso: date.iso,

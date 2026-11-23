@@ -203,6 +203,33 @@ const DemoAPI = (() => {
                 }
             });
         });
+        // 선(이동 경로)·면(군락) 예시 기록 몇 개 (캠퍼스, 2026년 6월 4일)
+        const shapes = [
+            ['개망초', '초본', 'area', [[0.0009, -0.0012], [0.0013, -0.0004], [0.0007, 0.0001], [0.0003, -0.0008]]],
+            ['토끼풀', '초본', 'area', [[-0.0011, 0.0006], [-0.0007, 0.0013], [-0.0013, 0.0017], [-0.0017, 0.0009]]],
+            ['쑥', '초본', 'area', [[-0.0004, -0.0019], [0.0, -0.0014], [-0.0005, -0.0011], [-0.0009, -0.0016]]],
+            ['배추흰나비', '곤충', 'line', [[0.0002, 0.0004], [0.0006, 0.0011], [0.0004, 0.0018], [0.0009, 0.0024]]],
+            ['양봉꿀벌', '곤충', 'line', [[-0.0016, -0.0006], [-0.0012, -0.0001], [-0.0014, 0.0003]]],
+        ];
+        shapes.forEach(([name, type, shape, pts]) => {
+            const sci = (pool.find((x) => x[0] === name) || [])[2] || '';
+            rows.push({
+                id,
+                name,
+                scientificName: sci,
+                type,
+                lat: null,
+                lon: null,
+                path: { shape, coords: pts.map(([dy, dx]) => ({ lat: CENTER.lat + dy, lon: CENTER.lon + dx })) },
+                date: '2026. 6. 4',
+                yearMonth: '2026-06',
+                user_id: TEACHER.id,
+                imageUrl: '',
+            });
+            const camp = weather.find((w) => rows.find((r) => r.id === w.observation_id && r.date === '2026. 6. 4'));
+            weather.push({ observation_id: id, status: 'ok', tavg: camp ? camp.tavg : 23.5, tmax: camp ? camp.tmax : 29 });
+            id++;
+        });
         recordCache = { rows, weather };
         return recordCache;
     }

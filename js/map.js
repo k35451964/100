@@ -97,6 +97,23 @@ function createLeafletMap(el, { center, radius, onPick, interactive }) {
                 const node = o.m.getElement() && o.m.getElement().querySelector('.dot');
                 const cls = dotClass(r);
                 if (node && node.className !== cls) node.className = cls;
+                if (r.coords) {
+                    const look = shapeLook(r);
+                    if (!o.shape) {
+                        const ll = r.coords.map((c) => [c.lat, c.lon]);
+                        o.shape = r.shape === 'area' ? L.polygon(ll) : L.polyline(ll);
+                        if (onPick) o.shape.on('click', () => onPick(r));
+                    }
+                    if (o.shapeKey !== look.key) {
+                        o.shape.setStyle({ color: look.color, weight: look.weight, opacity: 0.9, dashArray: look.gone ? '5 5' : null, fillColor: look.color, fillOpacity: look.fillOpacity });
+                        o.shapeKey = look.key;
+                    }
+                    const showShape = r.state !== 'hidden';
+                    if (showShape !== !!o.shapeShown) {
+                        showShape ? o.shape.addTo(map) : o.shape.remove();
+                        o.shapeShown = showShape;
+                    }
+                }
             });
             (view.facilities || []).forEach((f) => {
                 let o = facs.get(f.key);
@@ -136,7 +153,10 @@ function createLeafletMap(el, { center, radius, onPick, interactive }) {
             });
         },
         clear() {
-            recs.forEach((o) => o.m.remove());
+            recs.forEach((o) => {
+                o.m.remove();
+                if (o.shape) o.shape.remove();
+            });
             facs.forEach((o) => {
                 o.circle.remove();
                 o.label.remove();
@@ -153,6 +173,13 @@ function createLeafletMap(el, { center, radius, onPick, interactive }) {
 
 function dotClass(r) {
     return `dot dot-${r.state}`;
+}
+
+// 선·면 기록의 모양 (생태지도와 같게: 면은 종류 색 40% 채움, 선은 굵은 선 / 사라지면 회색 점선)
+function shapeLook(r) {
+    const gone = r.state === 'gone';
+    const color = gone ? '#9ca3af' : TYPE_COLOR[r.type] || '#64748b';
+    return { key: `${r.state}`, color, gone, fillOpacity: gone ? 0.18 : 0.4, weight: r.shape === 'area' ? 2 : 4 };
 }
 
 // ===== 카카오맵 =====
@@ -245,6 +272,25 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                 }
                 const cls = dotClass(r);
                 if (o.node.className !== cls) o.node.className = cls;
+                if (r.coords) {
+                    const look = shapeLook(r);
+                    if (!o.shapeObj) {
+                        const path = r.coords.map((c) => new kakao.maps.LatLng(c.lat, c.lon));
+                        o.shapeObj = r.shape === 'area' ? new kakao.maps.Polygon({ path, zIndex: 1 }) : new kakao.maps.Polyline({ path, zIndex: 1 });
+                        if (onPick) kakao.maps.event.addListener(o.shapeObj, 'click', () => onPick(r));
+                    }
+                    if (o.shapeKey !== look.key) {
+                        const opts = { strokeColor: look.color, strokeWeight: look.weight, strokeOpacity: 0.9, strokeStyle: look.gone ? 'shortdash' : 'solid' };
+                        if (r.shape === 'area') Object.assign(opts, { fillColor: look.color, fillOpacity: look.fillOpacity });
+                        o.shapeObj.setOptions(opts);
+                        o.shapeKey = look.key;
+                    }
+                    const showShape = r.state !== 'hidden';
+                    if (showShape !== o.shapeShown) {
+                        o.shapeObj.setMap(showShape ? map : null);
+                        o.shapeShown = showShape;
+                    }
+                }
                 if (clusters) {
                     const group = r.state === 'hidden' ? null : r.state === 'gone' ? 'gone' : 'ok';
                     if (group !== o.group) {
@@ -317,7 +363,10 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
                 clusters.ok.clear();
                 clusters.gone.clear();
             }
-            recs.forEach((o) => o.ov.setMap(null));
+            recs.forEach((o) => {
+                o.ov.setMap(null);
+                if (o.shapeObj) o.shapeObj.setMap(null);
+            });
             facs.forEach((o) => {
                 o.circle.setMap(null);
                 o.label.setMap(null);
@@ -349,10 +398,12 @@ function createSvgMap(el, { center, radius, onPick }) {
     const newNodes = new Map();
     const gArea = document.createElementNS(NS, 'g');
     const gFac = document.createElementNS(NS, 'g');
+    const gShape = document.createElementNS(NS, 'g');
     const gRec = document.createElementNS(NS, 'g');
+    const shapeNodes = new Map();
     const gLabel = document.createElementNS(NS, 'g');
     const gNew = document.createElementNS(NS, 'g');
-    svg.append(gArea, gFac, gRec, gLabel, gNew);
+    svg.append(gArea, gShape, gFac, gRec, gLabel, gNew);
     const note = document.createElementNS(NS, 'text');
     note.setAttribute('class', 'svg-note');
     note.textContent = '간단한 지도 (카카오 지도를 불러오지 못했어요)';
@@ -421,6 +472,24 @@ function createSvgMap(el, { center, radius, onPick }) {
             const p = project(r);
             node.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
             node.setAttribute('class', `svg-dot svg-${r.state}`);
+            if (r.coords) {
+                let sh = shapeNodes.get(r.id);
+                if (!sh) {
+                    sh = document.createElementNS(NS, r.shape === 'area' ? 'polygon' : 'polyline');
+                    if (onPick) sh.addEventListener('click', () => onPick(r));
+                    gShape.appendChild(sh);
+                    shapeNodes.set(r.id, sh);
+                }
+                const look = shapeLook(r);
+                sh.setAttribute('points', r.coords.map((c) => project(c)).map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(' '));
+                sh.setAttribute('stroke', look.color);
+                sh.setAttribute('stroke-width', look.weight);
+                sh.setAttribute('stroke-dasharray', look.gone ? '5 4' : '');
+                sh.setAttribute('fill', r.shape === 'area' ? look.color : 'none');
+                sh.setAttribute('fill-opacity', look.fillOpacity);
+                sh.setAttribute('stroke-linecap', 'round');
+                sh.style.display = r.state === 'hidden' ? 'none' : '';
+            }
         });
         (view.newcomers || []).forEach((n) => {
             let node = newNodes.get(n.id);
@@ -454,7 +523,8 @@ function createSvgMap(el, { center, radius, onPick }) {
         },
         render: draw,
         clear() {
-            [gArea, gFac, gRec, gLabel, gNew].forEach((g) => (g.innerHTML = ''));
+            [gArea, gShape, gFac, gRec, gLabel, gNew].forEach((g) => (g.innerHTML = ''));
+            shapeNodes.clear();
             recNodes.clear();
             facNodes.clear();
             newNodes.clear();
