@@ -153,7 +153,8 @@ function showPick(r) {
     else if (r.state === 'gone') state = '✕ 사라짐';
     else if (r.state === 'ok') state = '살아남음';
     const rec = APP.data && APP.data.records.find((x) => x.id === r.id);
-    toast(`${typeEmoji(r.type)} ${r.name}${rec ? ` · ${rec.iso.replace(/-/g, '.')} 기록` : ''}${state ? ` · ${state}` : ''}`);
+    const ind = isClimateIndicator(r.name, (rec && rec.sci) || r.sci) ? ' · 🌡️ 기후변화 생물지표종' : '';
+    toast(`${typeEmoji(r.type)} ${r.name}${ind}${rec ? ` · ${rec.iso.replace(/-/g, '.')} 기록` : ''}${state ? ` · ${state}` : ''}`);
 }
 
 // ===== 미래 보기 연출 (교사 화면, 전자칠판) =====

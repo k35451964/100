@@ -329,7 +329,7 @@ function buildFuture(input) {
     const circleArea = Math.PI * radiusM * radiusM;
 
     // ② 열섬, ③ 기후변화
-    const heatIsland = (Math.max(0, builtArea - greenArea) / 1e6) * HEAT_ISLAND.perKm2;
+    const heatIsland = HEAT_ISLAND.fullUrbanC * Math.min(1, Math.max(0, builtArea - greenArea) / circleArea);
     const dT = SCENARIO.dT + heatIsland;
 
     // 남은 생물의 반응
@@ -434,7 +434,9 @@ function summarize(ctx) {
     const species = [...speciesMap.values()];
     species.forEach((s) => {
         s.status = s.future === 0 ? 'gone' : s.future < s.now ? 'declined' : 'survived';
+        s.indicator = typeof isClimateIndicator === 'function' && isClimateIndicator(s.name, s.sci);
     });
+    newcomers.forEach((n) => (n.indicator = typeof isClimateIndicator === 'function' && isClimateIndicator(n.name, n.sci)));
     const types = RECORD_TYPES.map((type) => {
         const list = species.filter((s) => s.type === type);
         const newOfType = newcomers.filter((n) => n.type === type).length;
@@ -461,7 +463,7 @@ function summarize(ctx) {
     const alerts = [];
     if (built.length) alerts.push({ icon: '🌳', text: '학교 주변 녹지', value: `−${Math.round(greenLossPct)}%` });
     if (built.length) alerts.push({ icon: '🏗️', text: '건물·아스팔트로 덮인 땅', value: `+${imperviousPct.toFixed(1)}%p` });
-    if (built.length) alerts.push({ icon: '🔥', text: '도시 열섬 (지표면 온도)', value: `+${ctx.heatIsland.toFixed(2)}℃` });
+    if (built.length) alerts.push({ icon: '🔥', text: '도시 열섬 (기온)', value: `+${ctx.heatIsland.toFixed(1)}℃` });
     if (emitters) alerts.push({ icon: '🏭', text: '온실가스를 내는 시설', value: `${emitters}곳` });
     alerts.push({ icon: '🌍', text: '전 세계 온실가스 배출', value: '계속 많이' });
 

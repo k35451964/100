@@ -377,7 +377,7 @@ do $$
 declare
     t text;
 begin
-    foreach t in array array['classrooms', 'classroom_keywords', 'classroom_posters'] loop
+    foreach t in array array['classrooms', 'classroom_keywords', 'classroom_posters', 'classroom_members'] loop
         if not exists (select 1 from pg_publication_tables
                        where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
             execute format('alter publication supabase_realtime add table public.%I', t);

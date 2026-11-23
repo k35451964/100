@@ -410,18 +410,20 @@ const DemoAPI = (() => {
                 });
         },
 
-        subscribe(classroomId, { onClassroom, onKeywords, onPosters }) {
+        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers }) {
             const fn = (e) => {
                 if (e.table === 'all') {
                     onClassroom && onClassroom(e);
                     onKeywords && onKeywords(e);
                     onPosters && onPosters(e);
+                    onMembers && onMembers(e);
                     return;
                 }
                 if (e.classroomId !== classroomId) return;
                 if (e.table === 'classrooms' && onClassroom) onClassroom(e);
                 if (e.table === 'keywords' && onKeywords) onKeywords(e);
                 if ((e.table === 'posters' || e.table === 'ratings') && onPosters) onPosters(e);
+                if (e.table === 'members' && onMembers) onMembers(e);
             };
             listeners.add(fn);
             return () => listeners.delete(fn);

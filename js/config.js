@@ -32,8 +32,9 @@ const LOCAL_CLIMATE = {
 };
 
 // ===== 도시 열섬 =====
-// 녹지가 줄어든 넓이(㎢)당 더해지는 온도(℃). 서울 25개 자치구 분석: 녹지 1㎢ 늘 때 지표면 온도 약 0.23~0.25℃ 낮아짐
-const HEAT_ISLAND = { perKm2: 0.24 };
+// 학교 둘레(반지름 radius_m)가 도심처럼 모두 건물·아스팔트로 덮이면 +fullUrbanC℃, 덮인 비율만큼 더함
+// 근거: 대구기상청 — 대구 도심과 외곽의 낮 최고기온 차이 최대 3℃ (대경기후변화포럼, 2017)
+const HEAT_ISLAND = { fullUrbanC: 3.0 };
 
 // ===== 생물 계절 =====
 const PHENOLOGY = { springDaysPerC: 4.1 }; // 봄 기온 1℃ 오를 때 개화가 빨라지는 날 수
@@ -82,6 +83,120 @@ const KEYWORD_RULES = [
     ['shop', /편의점|CU|GS25|세븐일레븐|다이소|올리브영|문구|PC방|피시방|노래방|코인|가게|상점|만화|무인|인생네컷|사진관|서점|아트박스/i],
 ];
 
+// ===== 국가 기후변화 생물지표종 100종 (2024 개정) =====
+// 출처: 국립생물자원관 한반도의 생물다양성 「(2024) 기후변화 생물지표 100종」 지정목록 (산천어/송어는 두 이름으로 나눔)
+// [국명, 학명(속 종소명)] — 이름이나 학명이 같으면 '생물지표종'으로 표시합니다.
+const CLIMATE_INDICATORS = [
+    ['노루궁뎅이', 'Hericium erinaceus'],
+    ['마귀광대버섯', 'Amanita pantherina'],
+    ['큰갓버섯', 'Macrolepiota procera'],
+    ['팽나무버섯', 'Flammulina velutipes'],
+    ['황소비단그물버섯', 'Suillus bovinus'],
+    ['청각', 'Codium fragile'],
+    ['작은구슬산호말', 'Corallina pilulifera'],
+    ['지충이', 'Sargassum thunbergii'],
+    ['도깨비쇠고비', 'Cyrtomium falcatum'],
+    ['발풀고사리', 'Dicranopteris linearis'],
+    ['봉의꼬리', 'Pteris multifida'],
+    ['실고사리', 'Lygodium japonicum'],
+    ['콩짜개덩굴', 'Lemmaphyllum microphyllum'],
+    ['개비자나무', 'Cephalotaxus harringtonia'],
+    ['구상나무', 'Abies koreana'],
+    ['개구리발톱', 'Semiaquilegia adoxoides'],
+    ['개미탑', 'Haloragis micrantha'],
+    ['거지덩굴', 'Cayratia japonica'],
+    ['검노린재', 'Symplocos tanakana'],
+    ['계요등', 'Paederia scandens'],
+    ['굴거리나무', 'Daphniphyllum macropodum'],
+    ['금창초', 'Ajuga decumbens'],
+    ['까치밥나무', 'Ribes mandshuricum'],
+    ['꿩의바람꽃', 'Anemone raddeana'],
+    ['낚시제비꽃', 'Viola grypoceras'],
+    ['노각나무', 'Stewartia koreana'],
+    ['다정큼나무', 'Rhaphiolepis indica'],
+    ['돈나무', 'Pittosporum tobira'],
+    ['등대풀', 'Euphorbia helioscopia'],
+    ['멀구슬나무', 'Melia azedarach'],
+    ['멀꿀', 'Stauntonia hexaphylla'],
+    ['보리밥나무', 'Elaeagnus macrophylla'],
+    ['사람주나무', 'Neoshirakia japonica'],
+    ['사스래나무', 'Betula ermanii'],
+    ['사스레피나무', 'Eurya japonica'],
+    ['상산', 'Orixa japonica'],
+    ['송악', 'Hedera rhombea'],
+    ['수리딸기', 'Rubus corchorifolius'],
+    ['얼레지', 'Erythronium japonicum'],
+    ['왕모시풀', 'Boehmeria pannosa'],
+    ['자금우', 'Ardisia japonica'],
+    ['자주괴불주머니', 'Corydalis incisa'],
+    ['참배암차즈기', 'Salvia chanroenica'],
+    ['참식나무', 'Neolitsea sericea'],
+    ['천선과나무', 'Ficus erecta'],
+    ['층꽃나무', 'Caryopteris incana'],
+    ['큰앵초', 'Primula jesoana'],
+    ['후박나무', 'Machilus thunbergii'],
+    ['큰천남성', 'Arisaema ringens'],
+    ['큰입술갈고둥', 'Nerita albicilla'],
+    ['긴호랑거미', 'Argiope bruennichi'],
+    ['대륙납거미', 'Uroctea lesserti'],
+    ['말꼬마거미', 'Parasteatoda tepidariorum'],
+    ['산왕거미', 'Araneus ventricosus'],
+    ['검은큰따개비', 'Tetraclita japonica'],
+    ['각시메뚜기', 'Patanga japonica'],
+    ['남방노랑나비', 'Eurema mandarina'],
+    ['남색이마잠자리', 'Brachydiplax chalybea'],
+    ['넓적배사마귀', 'Hierodula patellifera'],
+    ['대륙좀잠자리', 'Sympetrum striolatum'],
+    ['말매미', 'Cryptotympana atrata'],
+    ['먹그림나비', 'Dichorragia nesimachus'],
+    ['무늬박이제비나비', 'Papilio helenus'],
+    ['물결부전나비', 'Lampides boeticus'],
+    ['방패광대노린재', 'Cantao ocellatus'],
+    ['북방아시아실잠자리', 'Ischnura elegans'],
+    ['뾰족부전나비', 'Curetis acuta'],
+    ['사슴풍뎅이', 'Dicronocephalus adamsi'],
+    ['연분홍실잠자리', 'Ceriagrion nipponicum'],
+    ['좀매부리', 'Euconocephalus nasutus'],
+    ['철써기', 'Mecopoda niponensis'],
+    ['큰그물강도래', 'Pteronarcys sachalina'],
+    ['푸른아시아실잠자리', 'Ischnura senegalensis'],
+    ['푸른큰수리팔랑나비', 'Choaspes benjaminii'],
+    ['금강모치', 'Rhynchocypris kumgangensis'],
+    ['북방종개', 'Iksookimia pacifica'],
+    ['빙어', 'Hypomesus nipponensis'],
+    ['산천어', 'Oncorhynchus masou'],
+    ['송어', 'Oncorhynchus masou'],
+    ['연어', 'Oncorhynchus keta'],
+    ['계곡산개구리', 'Rana huanrenensis'],
+    ['큰산개구리', 'Rana uenoi'],
+    ['한국꼬리치레도롱뇽', 'Onychodactylus koreanus'],
+    ['검은이마직박구리', 'Pycnonotus sinensis'],
+    ['꾀꼬리', 'Oriolus chinensis'],
+    ['노랑배진박새', 'Parus venustulus'],
+    ['대륙검은지빠귀', 'Turdus merula'],
+    ['동박새', 'Zosterops japonicus'],
+    ['되지빠귀', 'Turdus hortulorum'],
+    ['붉은부리찌르레기', 'Sturnus sericeus'],
+    ['뻐꾸기', 'Cuculus canorus'],
+    ['산솔새', 'Phylloscopus coronatus'],
+    ['소쩍새', 'Otus sunia'],
+    ['쇠물닭', 'Gallinula chloropus'],
+    ['쇠백로', 'Egretta garzetta'],
+    ['왜가리', 'Ardea cinerea'],
+    ['제비', 'Hirundo rustica'],
+    ['청둥오리', 'Anas platyrhynchos'],
+    ['해오라기', 'Nycticorax nycticorax'],
+    ['황로', 'Bubulcus ibis'],
+    ['흰날개해오라기', 'Ardeola bacchus'],
+];
+const INDICATOR_NAMES = new Set(CLIMATE_INDICATORS.map((x) => x[0]));
+const INDICATOR_SCI = new Set(CLIMATE_INDICATORS.map((x) => x[1].toLowerCase()));
+function isClimateIndicator(name, sci) {
+    if (INDICATOR_NAMES.has(String(name || '').trim())) return true;
+    const sp = String(sci || '').trim().split(/\s+/).slice(0, 2).join(' ').toLowerCase();
+    return !!sp && INDICATOR_SCI.has(sp);
+}
+
 // ===== 근거 자료 (비교 화면 '근거 자료' 카드) =====
 const SOURCES = [
     {
@@ -101,8 +216,13 @@ const SOURCES = [
     },
     {
         title: '도시 열섬',
-        body: `줄어든 녹지 1㎢당 지표면 온도 +${HEAT_ISLAND.perKm2}℃를 더함`,
-        from: '서울 25개 자치구 분석: 녹지 1㎢ 증가 시 지표면 온도 약 0.23~0.25℃ 감소 (그린피스, 2024)',
+        body: `학교 둘레가 도심처럼 모두 건물·아스팔트로 덮이면 +${HEAT_ISLAND.fullUrbanC}℃로 보고, 덮인 비율만큼 기온을 더함 (예: 20% 덮이면 +${(HEAT_ISLAND.fullUrbanC * 0.2).toFixed(1)}℃)`,
+        from: '대구기상청: 대구 도심과 외곽의 낮 최고기온 차이 최대 3℃ (2017 대경기후변화포럼)',
+    },
+    {
+        title: '기후변화 생물지표종',
+        body: '기후변화로 계절 활동·분포·개체 수 변화가 뚜렷하거나 뚜렷할 것으로 예상되어 정부가 조사·관리하는 100종. 우리 기록 속 지표종에 🌡️ 표시',
+        from: '국립생물자원관 「(2024) 기후변화 생물지표 100종」 (한반도의 생물다양성 species.nibr.go.kr)',
     },
     {
         title: '개화 시기',

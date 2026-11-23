@@ -212,7 +212,13 @@ async function openClassroom(id) {
         onClassroom: () => refreshClassroom(),
         onKeywords: () => refreshKeywords(),
         onPosters: () => refreshPosters(),
+        onMembers: () => refreshClassroom(), // 조 배정이 바뀌면 왼쪽 위 '○조'를 바로 바꿈
     });
+    // 실시간 연결이 끊겼을 때를 대비해, 조가 아직 없으면 20초마다 한 번 확인
+    clearInterval(APP.teamPoll);
+    APP.teamPoll = setInterval(() => {
+        if (APP.cls && !APP.cls.isTeacher && !APP.cls.myTeam && !document.hidden) refreshClassroom();
+    }, 20000);
     [APP.keywords, APP.posters] = await Promise.all([API.keywords(id), API.posters(id)]);
     renderClassroom();
 }
@@ -238,6 +244,7 @@ const refreshClassroom = debounce(async () => {
     if (futureKeys.some((k) => before[k] !== now[k])) APP.data = null;
     if (futureKeys.some((k) => before[k] !== now[k]) || JSON.stringify(before.analysis) !== JSON.stringify(now.analysis)) APP.future = null;
     if (before.mode !== now.mode) return renderClassroom();
+    if (!now.isTeacher && before.myTeam !== now.myTeam && now.myTeam) toast(`${now.myTeam}조로 배정됐어요!`, 'ok');
     onClassroomChanged(before, now);
 }, 150);
 

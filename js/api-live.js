@@ -150,12 +150,14 @@ const LiveAPI = (() => {
         },
 
         // ----- 실시간 -----
-        subscribe(classroomId, { onClassroom, onKeywords, onPosters }) {
+        subscribe(classroomId, { onClassroom, onKeywords, onPosters, onMembers }) {
             const ch = db
                 .channel(`classroom-${classroomId}`)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classrooms', filter: `id=eq.${classroomId}` }, (p) => onClassroom && onClassroom(p))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_keywords', filter: `classroom_id=eq.${classroomId}` }, (p) => onKeywords && onKeywords(p))
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_posters', filter: `classroom_id=eq.${classroomId}` }, (p) => onPosters && onPosters(p))
+                // 조 배정 (학생은 RLS 때문에 자기 줄의 바뀜만 받음)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'classroom_members', filter: `classroom_id=eq.${classroomId}` }, (p) => onMembers && onMembers(p))
                 .subscribe();
             return () => db.removeChannel(ch);
         },

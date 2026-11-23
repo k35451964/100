@@ -37,6 +37,7 @@ async function openCompare() {
         </section>
         <section class="cmp-sec">
             <h3>어떤 생물이 바뀌었을까?</h3>
+            ${indicatorSummary(f)}
             <div class="tabs-row" id="list-tabs"></div>
             <div class="species-grid" id="species-grid"></div>
         </section>
@@ -58,6 +59,16 @@ async function openCompare() {
     renderPheno(f);
     $('source-list').innerHTML = SOURCES.map((s) => `<div class="source"><b>${esc(s.title)}</b><p>${esc(s.body)}</p><span class="muted small">출처: ${esc(s.from)}</span></div>`).join('');
     return m;
+}
+
+// 우리 기록 속 국가 기후변화 생물지표종
+function indicatorSummary(f) {
+    const here = f.species.filter((s) => s.indicator);
+    const comers = f.newcomers.filter((n) => n.indicator);
+    if (!here.length && !comers.length) return '<p class="muted small">우리 기록에는 국가 기후변화 생물지표종(100종)이 없어요.</p>';
+    const by = (st) => here.filter((s) => s.status === st).length;
+    return `<p class="ind-summary">🌡️ 우리 기록 속 <b>국가 기후변화 생물지표종 ${here.length}종</b>
+        — 사라짐 ${by('gone')} · 줄어듦 ${by('declined')} · 남음 ${by('survived')}${comers.length ? ` · 새로 옴 ${comers.length}` : ''}</p>`;
 }
 
 // (가) 작은 지도 두 개 (같은 축척)
@@ -162,7 +173,7 @@ function speciesCard(s, kind) {
     }
     return `<div class="sp-card sp-${kind}">
         <div class="sp-pic">${pic}</div>
-        <div class="sp-body"><b>${esc(s.name)}</b><span class="muted small">${typeEmoji(s.type)} ${esc(s.type)}${s.sci ? ` · <i>${esc(s.sci)}</i>` : ''}</span><ul>${lines}</ul></div>
+        <div class="sp-body">${s.indicator ? '<span class="ind-badge" title="국가 기후변화 생물지표종 (2024)">🌡️ 기후변화 생물지표종</span>' : ''}<b>${esc(s.name)}</b><span class="muted small">${typeEmoji(s.type)} ${esc(s.type)}${s.sci ? ` · <i>${esc(s.sci)}</i>` : ''}</span><ul>${lines}</ul></div>
     </div>`;
 }
 
@@ -172,7 +183,7 @@ function renderEnv(f) {
     const L = LOCAL_CLIMATE;
     const ready = (v) => (v === null || v === undefined ? '<span class="muted">자료 준비 중</span>' : v);
     const rows = [
-        ['평균 기온 변화', `<b>+${e.dT.toFixed(2)}℃</b>`, `기후변화 +${e.dTClimate.toFixed(1)}℃ (${esc(SCENARIO.dTNote)}) + 도시 열섬 +${e.heatIsland.toFixed(2)}℃`],
+        ['평균 기온 변화', `<b>+${e.dT.toFixed(1)}℃</b>`, `기후변화 +${e.dTClimate.toFixed(1)}℃ (${esc(SCENARIO.dTNote)}) + 도시 열섬 +${e.heatIsland.toFixed(1)}℃`],
         ['연평균 기온', L.annualTempNow == null ? ready(null) : `${fmt1(L.annualTempNow)}℃ → <b>${fmt1(L.annualTempNow + e.dT)}℃</b>`, '기상청 기후정보포털'],
         ['폭염일수 (일 최고 33℃ 이상)', L.hotDaysNow == null ? ready(null) : `${L.hotDaysNow}일 → <b>${L.hotDaysFuture}일</b>`, '기상청 기후정보포털'],
         ['녹지 (생물이 기록된 곳)', `<b>−${Math.round(e.greenLossPct)}%</b>`, '키워드 시설이 들어선 만큼'],
