@@ -198,7 +198,7 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
     const news = new Map();
     let areaCircle = null;
 
-    // 클러스터 (생태지도처럼 가까운 기록을 숫자 동그라미로 묶음, 누르면 확대). 지도 레벨 5 이상에서만 묶고, 3개 이상일 때만 묶음
+    // 클러스터 (생태지도처럼 가까운 기록을 숫자 동그라미로 묶음, 누르면 확대). 지도 레벨 4 이상에서만 묶고, 3개 이상일 때만 묶음
     //   살아남은·지금 생물: 초록 동그라미 / 사라진 생물: 회색 ✕ 동그라미
     const hasCluster = !!kakao.maps.MarkerClusterer;
     const clusterStyle = (color, bg, border) => ({
@@ -218,8 +218,8 @@ function createKakaoMap(el, { center, radius, onPick, interactive }) {
     try {
         clusters = hasCluster
         ? {
-              ok: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 5, gridSize: 40, minClusterSize: 3, styles: [clusterStyle('#047857', 'rgba(255,255,255,0.95)', '#10b981')] }),
-              gone: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 5, gridSize: 40, minClusterSize: 3, texts: (n) => `✕${n}`, styles: [clusterStyle('#4b5563', 'rgba(229,231,235,0.95)', '#9ca3af')] }),
+              ok: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 4, gridSize: 45, minClusterSize: 3, styles: [clusterStyle('#047857', 'rgba(255,255,255,0.95)', '#10b981')] }),
+              gone: new kakao.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 4, gridSize: 45, minClusterSize: 3, texts: (n) => `✕${n}`, styles: [clusterStyle('#4b5563', 'rgba(229,231,235,0.95)', '#9ca3af')] }),
           }
         : null;
     } catch (err) {
