@@ -1,6 +1,6 @@
 'use strict';
 // 2차시 도입: 조별 예측
-//   미래 보기 전에, 조별로 '2100년에 사라질 것 같은 생물'을 우리 기록에서 3가지 고르고 까닭을 적습니다.
+//   미래 보기 전에, 조별로 '아주 먼 미래에 사라질 것 같은 생물'을 우리 기록에서 3가지 고르고 까닭을 적습니다.
 //   미래 지도가 열리면 예측과 결과(사라짐·줄어듦·남음)를 나란히 보여 줍니다. (전개1 발문 ① "예측과 실제는 무엇이 달랐나요?")
 
 const PRED_MAX = 3;
@@ -83,8 +83,8 @@ function predictEditorHtml(team) {
     const reason = PRED.reason !== null ? PRED.reason : saved ? saved.reason : '';
     const cands = predictCandidates();
     return `<section class="pred-edit">
-        <h3>${team}조 예측 — 2100년, 우리 지도에서 <b>사라질 것 같은 생물 ${PRED_MAX}가지</b></h3>
-        <p class="muted small">1차시에 우리가 바란 시설이 모두 생기고 2100년이 되면 어떤 생물이 사라질까요? 조원 누구나 고르고 바꿀 수 있어요. 미래 지도가 열리면 잠겨요.</p>
+        <h3>${team}조 예측 — 아주 먼 미래, 우리 지도에서 <b>사라질 것 같은 생물 ${PRED_MAX}가지</b></h3>
+        <p class="muted small">1차시에 우리가 바란 시설이 모두 생기고 아주 먼 미래가 되면 어떤 생물이 사라질까요? 조원 누구나 고르고 바꿀 수 있어요. 미래 지도가 열리면 잠겨요.</p>
         ${
             cands.length
                 ? `<div class="pred-chips" id="pred-chips">${cands
