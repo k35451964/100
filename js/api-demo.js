@@ -4,7 +4,7 @@
 // ⚠️ 생물 기록·키워드·포스터·별점은 모두 가짜(예시)입니다.
 
 const DemoAPI = (() => {
-    const STORE_KEY = 'hb100_demo_v1';
+    const STORE_KEY = 'hb100_demo_v2'; // 예시 데이터 형식이 바뀌면 숫자를 올림
     const USER_KEY = 'hb100_demo_user';
     const CENTER = { lat: 35.8906, lon: 128.6121 }; // 예시 캠퍼스
     const listeners = new Set();
@@ -102,9 +102,9 @@ const DemoAPI = (() => {
     function seedPredictions() {
         const at = new Date().toISOString();
         return [
-            { classroom_id: 1, team: 1, species: ['소나무', '왕벚나무', '개나리'], reason: '아파트와 마트가 들어서면 나무가 베일 것 같아서', updated_at: at },
-            { classroom_id: 1, team: 3, species: ['양봉꿀벌', '배추흰나비', '네발나비'], reason: '더워지고 꽃이 줄면 곤충이 먼저 사라질 것 같아서', updated_at: at },
-            { classroom_id: 1, team: 4, species: ['쑥', '강아지풀', '토끼풀'], reason: '건물과 주차장이 풀밭을 덮을 것 같아서', updated_at: at },
+            { classroom_id: 1, team: 1, species: ['소나무::gone', '왕벚나무::gone', '개나리::declined'], reason: '아파트와 마트가 들어서면 나무가 베이고, 개나리는 화단에 남아 조금은 버틸 것 같아서', updated_at: at },
+            { classroom_id: 1, team: 3, species: ['양봉꿀벌::gone', '배추흰나비::declined', '네발나비::declined'], reason: '더워지고 꽃이 줄면 곤충이 먼저 줄어들 것 같아서', updated_at: at },
+            { classroom_id: 1, team: 4, species: ['쑥::survived', '강아지풀::declined', '토끼풀::gone'], reason: '쑥은 어디서나 잘 자라 남고, 토끼풀 풀밭은 주차장이 덮을 것 같아서', updated_at: at },
         ];
     }
 

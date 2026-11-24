@@ -2374,3 +2374,43 @@ body.demo .demo-ribbon {
     gap: 10px;
     padding: 10px;
 }
+
+/* 예측: 생물마다 사라질 것·줄어들 것·남을 것 */
+.pred-guesses {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+.pred-guess {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #ddd6fe;
+}
+.pred-guess .seg button[aria-pressed='true'] {
+    background: var(--violet);
+    color: #fff;
+}
+.pv-guess {
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ede9fe;
+    color: var(--violet);
+    font-size: 12px;
+    font-weight: 700;
+}
+.pv-right {
+    background: #dcfce7;
+    color: #166534;
+}
+.pv-wrong {
+    background: #fef3c7;
+    color: #92400e;
+}

@@ -1,10 +1,24 @@
 'use strict';
 // 2차시 도입: 조별 예측
-//   미래 보기 전에, 조별로 '아주 먼 미래에 사라질 것 같은 생물'을 우리 기록에서 3가지 고르고 까닭을 적습니다.
-//   미래 지도가 열리면 예측과 결과(사라짐·줄어듦·남음)를 나란히 보여 줍니다. (전개1 발문 ① "예측과 실제는 무엇이 달랐나요?")
+//   미래 보기 전에, 조별로 우리 기록에서 생물 3가지를 고르고 각각 사라질지·줄어들지·남을지 예측하고 까닭을 적습니다.
+//   미래 지도가 열리면 예측과 결과를 나란히 보여 줍니다. (전개 질의응답 ① "예측과 실제는 무엇이 달랐나요?")
+//   저장 형식: species 배열의 각 항목 = '이름::gone|declined|survived' (예전 형식 '이름'만 있으면 '사라질 것'으로 봄)
 
 const PRED_MAX = 3;
-const PRED = { modal: null, picked: null, reason: null };
+const PRED = { modal: null, picked: null, reason: null }; // picked: Map(이름 → 'gone'|'declined'|'survived'|'')
+const GUESS = [
+    ['gone', '사라질 것'],
+    ['declined', '줄어들 것'],
+    ['survived', '남을 것'],
+];
+const STATUS_LABEL = { gone: '사라짐', declined: '줄어듦', survived: '남음' };
+const guessLabel = (g) => (GUESS.find(([k]) => k === g) || [, ''])[1];
+
+function parseEntry(e) {
+    const [name, guess] = String(e).split('::');
+    return { name, guess: GUESS.some(([k]) => k === guess) ? guess : 'gone' };
+}
+const entriesOf = (p) => (p && Array.isArray(p.species) ? p.species.map(parseEntry) : []);
 
 const predictionsReady = () => Array.isArray(APP.predictions);
 const predictionOf = (team) => (APP.predictions || []).find((p) => p.team === team) || null;
@@ -23,13 +37,12 @@ function predictCandidates() {
     return [...m.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ko'));
 }
 
-// 예측한 생물이 실제로 어떻게 됐는가
-function predictVerdict(name) {
+// 예측이 맞았는가: 실제로 사라짐·줄어듦·남음 중 무엇이 됐는지와 비교
+function predictVerdict({ name, guess }) {
     const s = APP.future && APP.future.species.find((x) => x.name === name);
-    if (!s) return { cls: 'unknown', label: '기록 없음' };
-    if (s.status === 'gone') return { cls: 'hit', label: '✔ 사라짐' };
-    if (s.status === 'declined') return { cls: 'half', label: '△ 줄어듦' };
-    return { cls: 'miss', label: '✘ 남음' };
+    if (!s) return { cls: 'unknown', label: '기록 없음', hit: false };
+    const actual = STATUS_LABEL[s.status] || s.status;
+    return s.status === guess ? { cls: 'right', label: `✔ ${actual}`, hit: true } : { cls: 'wrong', label: `✘ 실제 ${actual}`, hit: false };
 }
 
 async function openPredict() {
@@ -70,8 +83,8 @@ function predictRefresh() {
     else if (!isTeacher() && !myTeam) html += '<p class="muted">조가 정해지면 조별로 예측할 수 있어요.</p>';
     html += predictBoardHtml({ revealed });
     if (revealed && APP.future) {
-        const gone = APP.future.species.filter((s) => s.status === 'gone').map((s) => s.name);
-        html += `<p class="pred-actual">실제로 사라진 종 <b>${gone.length}종</b>${gone.length ? `: ${gone.slice(0, 12).map(esc).join(', ')}${gone.length > 12 ? ' …' : ''}` : ''}</p>`;
+        const by = (st) => APP.future.species.filter((s) => s.status === st).length;
+        html += `<p class="pred-actual">실제 결과: 사라짐 <b>${by('gone')}종</b> · 줄어듦 <b>${by('declined')}종</b> · 남음 <b>${by('survived')}종</b> · 새로 옴 <b>${APP.future.newcomers.length}종</b></p>`;
     }
     body.innerHTML = html;
     bindPredictEditor(myTeam);
@@ -79,12 +92,12 @@ function predictRefresh() {
 
 function predictEditorHtml(team) {
     const saved = predictionOf(team);
-    if (!PRED.picked) PRED.picked = new Set(saved ? saved.species : []);
+    if (!PRED.picked) PRED.picked = new Map(entriesOf(saved).map((e) => [e.name, e.guess]));
     const reason = PRED.reason !== null ? PRED.reason : saved ? saved.reason : '';
     const cands = predictCandidates();
     return `<section class="pred-edit">
-        <h3>${team}조 예측 — 아주 먼 미래, 우리 지도에서 <b>사라질 것 같은 생물 ${PRED_MAX}가지</b></h3>
-        <p class="muted small">1차시에 우리가 바란 시설이 모두 생기고 아주 먼 미래가 되면 어떤 생물이 사라질까요? 조원 누구나 고르고 바꿀 수 있어요. 미래 지도가 열리면 잠겨요.</p>
+        <h3>${team}조 예측 — 우리 지도의 생물 ${PRED_MAX}가지는 <b>어떻게 변할까?</b></h3>
+        <p class="muted small">1차시에 우리가 바란 시설이 모두 생기고 아주 먼 미래가 되면, 이 생물들은 사라질까요, 줄어들까요, 남을까요? 조원 누구나 고르고 바꿀 수 있어요. 미래 지도가 열리면 잠겨요.</p>
         ${
             cands.length
                 ? `<div class="pred-chips" id="pred-chips">${cands
@@ -92,13 +105,30 @@ function predictEditorHtml(team) {
                       .join('')}</div>`
                 : '<p class="muted">아직 생태지도 기록이 없어요.</p>'
         }
-        <label class="pred-reason-label">까닭<textarea id="pred-reason" rows="2" maxlength="500" placeholder="예: 아파트가 숲을 덮을 것 같아서 / 더위에 약할 것 같아서">${esc(reason)}</textarea></label>
+        <div class="pred-guesses" id="pred-guesses">${predictGuessRows()}</div>
+        <label class="pred-reason-label">까닭<textarea id="pred-reason" rows="2" maxlength="500" placeholder="예: 소나무는 아파트 자리라 사라질 것 같고, 쑥은 더위에 강해 남을 것 같아서">${esc(reason)}</textarea></label>
         <div class="row-end"><span class="muted small" id="pred-count">${PRED.picked.size}/${PRED_MAX}종</span><button class="btn btn-primary btn-lg" id="pred-save">저장</button></div>
     </section>`;
 }
 
+// 고른 생물마다 [사라질 것 | 줄어들 것 | 남을 것]
+function predictGuessRows() {
+    if (!PRED.picked.size) return '<p class="muted small">위에서 생물을 골라 주세요.</p>';
+    return [...PRED.picked.entries()]
+        .map(
+            ([name, g]) => `<div class="pred-guess"><b>${esc(name)}</b><div class="seg small">${GUESS.map(
+                ([k, l]) => `<button type="button" data-guess="${k}" data-name="${esc(name)}" aria-pressed="${g === k}">${l}</button>`
+            ).join('')}</div></div>`
+        )
+        .join('');
+}
+
 function bindPredictEditor(team) {
     const chips = $('pred-chips');
+    const redrawGuesses = () => {
+        $('pred-guesses').innerHTML = predictGuessRows();
+        $('pred-count').textContent = `${PRED.picked.size}/${PRED_MAX}종`;
+    };
     if (chips)
         chips.addEventListener('click', (e) => {
             const b = e.target.closest('[data-name]');
@@ -106,19 +136,30 @@ function bindPredictEditor(team) {
             const name = b.dataset.name;
             if (PRED.picked.has(name)) PRED.picked.delete(name);
             else if (PRED.picked.size >= PRED_MAX) return toast(`${PRED_MAX}가지까지 고를 수 있어요. 하나를 빼고 골라 주세요.`, 'info');
-            else PRED.picked.add(name);
+            else PRED.picked.set(name, '');
             b.classList.toggle('on', PRED.picked.has(name));
-            $('pred-count').textContent = `${PRED.picked.size}/${PRED_MAX}종`;
+            redrawGuesses();
+        });
+    const guesses = $('pred-guesses');
+    if (guesses)
+        guesses.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-guess]');
+            if (!b) return;
+            PRED.picked.set(b.dataset.name, b.dataset.guess);
+            redrawGuesses();
         });
     const save = $('pred-save');
     if (save)
         save.addEventListener('click', async () => {
-            if (!PRED.picked.size) return toast('사라질 것 같은 생물을 하나 이상 골라 주세요.', 'error');
+            if (!PRED.picked.size) return toast('생물을 하나 이상 골라 주세요.', 'error');
+            const missing = [...PRED.picked.entries()].filter(([, g]) => !g).map(([n]) => n);
+            if (missing.length) return toast(`${missing.join(', ')}: 사라질지·줄어들지·남을지 골라 주세요.`, 'error');
             const reason = $('pred-reason').value.trim();
             if (!reason) return toast('까닭도 적어 주세요. (서식지, 더위 등)', 'error');
             save.disabled = true;
             try {
-                await API.savePrediction(APP.cls.id, team, { species: [...PRED.picked], reason });
+                const species = [...PRED.picked.entries()].map(([n, g]) => `${n}::${g}`);
+                await API.savePrediction(APP.cls.id, team, { species, reason });
                 APP.predictions = await API.predictions(APP.cls.id);
                 PRED.picked = null;
                 PRED.reason = null;
@@ -140,20 +181,17 @@ function predictBoardHtml({ revealed, onlyTeam = null, compact = false }) {
         .map((t) => {
             const p = predictionOf(t);
             const mine = !isTeacher() && c.myTeam === t;
+            const list = entriesOf(p);
             let score = '';
-            if (revealed && p && p.species.length) {
-                const hits = p.species.filter((n) => predictVerdict(n).cls === 'hit').length;
-                const half = p.species.filter((n) => predictVerdict(n).cls === 'half').length;
-                score = `<span class="pred-score">✔ ${hits}/${p.species.length}${half ? ` · △ ${half}` : ''}</span>`;
-            }
+            if (revealed && list.length) score = `<span class="pred-score">✔ ${list.filter((e) => predictVerdict(e).hit).length}/${list.length} 맞힘</span>`;
             return `<article class="pred-card${mine ? ' mine' : ''}">
                 <h4>${t}조${mine ? ' <span class="tag">우리 조</span>' : ''}${score}</h4>
                 ${
-                    p && p.species.length
-                        ? `<ul class="pred-list">${p.species
-                              .map((n) => {
-                                  const v = revealed ? predictVerdict(n) : null;
-                                  return `<li><span>${esc(n)}</span>${v ? `<span class="pv pv-${v.cls}">${v.label}</span>` : ''}</li>`;
+                    list.length
+                        ? `<ul class="pred-list">${list
+                              .map((e) => {
+                                  const v = revealed ? predictVerdict(e) : null;
+                                  return `<li><span>${esc(e.name)} <span class="pv-guess">${guessLabel(e.guess)}</span></span>${v ? `<span class="pv pv-${v.cls}">${v.label}</span>` : ''}</li>`;
                               })
                               .join('')}</ul>${p.reason ? `<p class="pred-why">💬 ${esc(p.reason)}</p>` : ''}`
                         : '<p class="muted small">아직 예측하지 않았어요</p>'
