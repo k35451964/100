@@ -93,7 +93,12 @@ function showLogin() {
     const demo = API.mode === 'demo';
     $('app').innerHTML = `
         <div class="center-card login-card">
-            <div class="logo"><img src="img/earth.png" alt="" width="96" height="96"></div>
+            <div class="logo flip-earth">
+                <div class="flip-inner">
+                    <img class="flip-front" src="img/earth.png" alt="" width="96" height="96">
+                    <img class="flip-back" src="img/earth-angry.png" alt="" width="96" height="96">
+                </div>
+            </div>
             <h1>아주 먼 미래, 우리 학교 생태지도</h1>
             <p class="muted">티치타카 AI 생태지도 계정으로 로그인해요.</p>
             ${

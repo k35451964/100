@@ -215,11 +215,38 @@ h4 {
     line-height: 1;
     margin-bottom: 8px;
 }
-.logo img {
-    display: block;
+/* 첫 화면 지구: 마우스를 올리면 옆으로 뒤집혀 화난 지구가 보이고, 떼면 다시 웃는 지구 */
+.flip-earth {
     width: 96px;
     height: 96px;
-    margin: 0 auto;
+    margin: 0 auto 8px;
+    perspective: 600px;
+}
+.flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+}
+.flip-earth:hover .flip-inner {
+    transform: rotateY(180deg);
+}
+.flip-inner img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+.flip-back {
+    transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .flip-inner {
+        transition: none;
+    }
 }
 .form {
     display: grid;
