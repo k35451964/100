@@ -215,6 +215,12 @@ h4 {
     line-height: 1;
     margin-bottom: 8px;
 }
+.logo img {
+    display: block;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto;
+}
 .form {
     display: grid;
     gap: 12px;
