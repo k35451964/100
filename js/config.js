@@ -194,6 +194,35 @@ const CLIMATE_INDICATORS = [
     ['황로', 'Bubulcus ibis'],
     ['흰날개해오라기', 'Ardeola bacchus'],
 ];
+// ===== 새로 올 생물 후보 (남방계 기후변화 생물지표종) =====
+// 학반 기록만으로는 '더 따뜻한 곳에 사는 생물'을 찾기 어려울 때(기록이 한 지역·한 계절에 몰려 있을 때) 이 목록에서 채움.
+// 위 국가 기후변화 생물지표종 가운데, 주로 남부 지방에 살고 기온이 오르면 북쪽으로 퍼질 것으로 예상되는 육상 생물만 골랐음.
+const SOUTHERN_CANDIDATES = [
+    ['후박나무', 'Machilus thunbergii', '목본'],
+    ['돈나무', 'Pittosporum tobira', '목본'],
+    ['멀구슬나무', 'Melia azedarach', '목본'],
+    ['사스레피나무', 'Eurya japonica', '목본'],
+    ['다정큼나무', 'Rhaphiolepis indica', '목본'],
+    ['참식나무', 'Neolitsea sericea', '목본'],
+    ['굴거리나무', 'Daphniphyllum macropodum', '목본'],
+    ['천선과나무', 'Ficus erecta', '목본'],
+    ['송악', 'Hedera rhombea', '목본'],
+    ['멀꿀', 'Stauntonia hexaphylla', '목본'],
+    ['금창초', 'Ajuga decumbens', '초본'],
+    ['거지덩굴', 'Cayratia japonica', '초본'],
+    ['도깨비쇠고비', 'Cyrtomium falcatum', '초본'],
+    ['남방노랑나비', 'Eurema mandarina', '곤충'],
+    ['넓적배사마귀', 'Hierodula patellifera', '곤충'],
+    ['무늬박이제비나비', 'Papilio helenus', '곤충'],
+    ['물결부전나비', 'Lampides boeticus', '곤충'],
+    ['먹그림나비', 'Dichorragia nesimachus', '곤충'],
+    ['방패광대노린재', 'Cantao ocellatus', '곤충'],
+    ['푸른아시아실잠자리', 'Ischnura senegalensis', '곤충'],
+    ['동박새', 'Zosterops japonicus', '기타 생물'],
+    ['검은이마직박구리', 'Pycnonotus sinensis', '기타 생물'],
+];
+const NEWCOMER_MIN = 5; // 새로 온 생물을 적어도 이만큼 보여 줌 (기록에서 찾은 종 + 위 후보)
+
 const INDICATOR_NAMES = new Set(CLIMATE_INDICATORS.map((x) => x[0]));
 const INDICATOR_SCI = new Set(CLIMATE_INDICATORS.map((x) => x[1].toLowerCase()));
 function isClimateIndicator(name, sci) {
@@ -213,6 +242,11 @@ const SOURCES = [
         title: '생물이 견디는 기온',
         body: '티치타카 생태지도의 모든 관찰 기록(다른 학교·지역 포함)에서, 같은 계절(±30일)에 그 생물이 관찰된 날의 가장 낮은~가장 높은 평균 기온을 그 생물이 견딘 기온 범위로 봄. 미래 기온이 이 범위를 벗어나는 만큼 줄어듦',
         from: '티치타카 관찰 기록 + 기상청 지상(ASOS) 일자료 · 생태학의 열 안전 여유(thermal safety margin) 개념',
+    },
+    {
+        title: '새로 온 생물',
+        body: '우리 학교에는 없고, 같은 계절에 우리보다 따뜻한 날·곳에서 관찰된 생물 가운데 미래 기온에 맞는 종. 기록만으로 부족하면, 주로 남부 지방에 살고 기온이 오르면 북쪽으로 퍼질 것으로 예상되는 국가 기후변화 생물지표종에서 채움',
+        from: '티치타카 관찰 기록 + 국립생물자원관 「(2024) 기후변화 생물지표 100종」',
     },
     {
         title: '서식지(녹지)',

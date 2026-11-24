@@ -143,23 +143,40 @@ function renderTypeChart(f) {
 
 // (다) 종 목록
 function renderSpeciesLists(f) {
+    // 기록이 많은 종부터 (익숙한 생물이 먼저 보이게). 한 번에 12종씩 보여 주고 [더 보기]
+    const byRecords = (a, b) => b.now - a.now || a.name.localeCompare(b.name, 'ko');
     const lists = {
-        gone: { label: '사라진 종', items: f.species.filter((s) => s.status === 'gone') },
-        declined: { label: '줄어든 종', items: f.species.filter((s) => s.status === 'declined') },
-        survived: { label: '남은 종', items: f.species.filter((s) => s.status === 'survived') },
+        gone: { label: '사라진 종', items: f.species.filter((s) => s.status === 'gone').sort(byRecords) },
+        declined: { label: '줄어든 종', items: f.species.filter((s) => s.status === 'declined').sort(byRecords) },
+        survived: { label: '남은 종', items: f.species.filter((s) => s.status === 'survived').sort(byRecords) },
         new: { label: '새로 온 종', items: f.newcomers },
     };
+    const PAGE = 12;
+    let shown = PAGE;
     const draw = () => {
         $('list-tabs').innerHTML = Object.entries(lists)
             .map(([k, v]) => `<button data-l="${k}" aria-pressed="${CMP.list === k}">${v.label} <b>${v.items.length}</b></button>`)
             .join('');
         const items = lists[CMP.list].items;
-        $('species-grid').innerHTML = items.length ? items.map((s) => speciesCard(s, CMP.list)).join('') : '<p class="muted">해당하는 생물이 없어요.</p>';
+        const rest = items.length - shown;
+        $('species-grid').innerHTML = items.length
+            ? items.slice(0, shown).map((s) => speciesCard(s, CMP.list)).join('') +
+              (rest > 0
+                  ? `<div class="sp-more"><span class="muted">${shown}종 보는 중 · ${rest}종 더 있음 (기록이 많은 종부터)</span><button class="btn btn-small" data-more="1">${Math.min(PAGE, rest)}종 더 보기</button>${rest > PAGE ? '<button class="btn btn-small" data-more="all">모두 보기</button>' : ''}</div>`
+                  : '')
+            : '<p class="muted">해당하는 생물이 없어요.</p>';
     };
     $('list-tabs').addEventListener('click', (e) => {
         const b = e.target.closest('[data-l]');
         if (!b) return;
         CMP.list = b.dataset.l;
+        shown = PAGE;
+        draw();
+    });
+    $('species-grid').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-more]');
+        if (!b) return;
+        shown = b.dataset.more === 'all' ? Infinity : shown + PAGE;
         draw();
     });
     draw();
@@ -168,7 +185,9 @@ function renderSpeciesLists(f) {
 function speciesCard(s, kind) {
     const pic = s.imageUrl ? `<img src="${esc(s.imageUrl)}" alt="" loading="lazy">` : `<span class="sp-emoji">${typeEmoji(s.type)}</span>`;
     let lines = '';
-    if (kind === 'new') {
+    if (kind === 'new' && s.fromList) {
+        lines = '<li>지금은 주로 남부 지방에 사는 생물</li><li>기온이 오르면 북쪽으로 퍼질 것으로 예상됨</li>';
+    } else if (kind === 'new') {
         lines = `<li>다른 지역에서 ${s.month}월 무렵 관찰</li><li>그때 기온 ${fmt1(s.lo)}~${fmt1(s.hi)}℃ (기록 ${s.refs}건)</li>`;
     } else {
         lines = `<li>기록 ${s.now}건 → ${s.future}건</li>`;

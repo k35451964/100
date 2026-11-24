@@ -478,6 +478,23 @@ function findNewcomers(study, all, bySpecies, grid, dT, center, radiusM, habitat
         }
     });
     out.sort((a, b) => b.gain - a.gain || b.refs - a.refs);
+    // 기록만으로 부족하면 남방계 기후변화 생물지표종으로 채움 (종류가 고루 섞이게, 같은 학반은 늘 같은 종)
+    const target = typeof NEWCOMER_MIN === 'number' ? Math.min(MAX_NEW_SPECIES, NEWCOMER_MIN) : 0;
+    if (out.length < target && typeof SOUTHERN_CANDIDATES !== 'undefined') {
+        const taken = new Set(out.map((s) => s.name));
+        const pool = SOUTHERN_CANDIDATES.filter(([name]) => !here.has(name) && !taken.has(name)).map(([name, sci, type]) => ({ name, sci, type, k: rng() }));
+        const byType = new Map();
+        pool.sort((a, b) => a.k - b.k).forEach((c) => {
+            if (!byType.has(c.type)) byType.set(c.type, []);
+            byType.get(c.type).push(c);
+        });
+        const lanes = [...byType.values()];
+        for (let i = 0; out.length < target && lanes.some((l) => l.length); i++) {
+            const lane = lanes[i % lanes.length];
+            const c = lane.shift();
+            if (c) out.push({ name: c.name, type: c.type, sci: c.sci, imageUrl: '', fromList: true, gain: 0, refs: 0 });
+        }
+    }
     const free = habitatPts.filter((c) => !built.some((f) => Math.hypot(f.x - c.x, f.y - c.y) <= f.radius + 10));
     return out.slice(0, MAX_NEW_SPECIES).map((s, i) => {
         const spot = free.length ? free[Math.floor(rng() * free.length)] : { x: (rng() - 0.5) * radiusM, y: (rng() - 0.5) * radiusM };

@@ -2363,3 +2363,14 @@ body.demo .demo-ribbon {
 .present.single .present-nav {
     visibility: hidden;
 }
+
+/* 비교 화면 종 목록: 더 보기 */
+.sp-more {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+}
