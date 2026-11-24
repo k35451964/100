@@ -4,7 +4,7 @@
 // ⚠️ 생물 기록·키워드·포스터·별점은 모두 가짜(예시)입니다.
 
 const DemoAPI = (() => {
-    const STORE_KEY = 'hb100_demo_v2'; // 예시 데이터 형식이 바뀌면 숫자를 올림
+    const STORE_KEY = 'hb100_demo_v3'; // 예시 데이터 형식이 바뀌면 숫자를 올림
     const USER_KEY = 'hb100_demo_user';
     const CENTER = { lat: 35.8906, lon: 128.6121 }; // 예시 캠퍼스
     const listeners = new Set();
@@ -40,17 +40,18 @@ const DemoAPI = (() => {
             for (let i = 0; i < n; i++) keywords.push({ id: kid++, classroom_id: 1, text, created_at: new Date(Date.UTC(2026, 10, 20, 0, kid)).toISOString() });
         });
         const posterInfo = [
-            ['지구지킴이', '맥도날드·이마트 같은 시설이 녹지를 덮자 곤충 기록이 크게 줄었다. 줄어든 생물은 같은 계절에 서늘한 날 관찰되던 종이 많아서, 기온이 오른 것이 원인이라고 추론했다. 해결: 학교 화단에 자생 초본 심기.'],
-            ['초록발자국', '아주 먼 미래에는 봄꽃이 한 달쯤 빨리 핀다. 꽃과 곤충의 만남이 어긋날 수 있다. 해결: 같은 장소를 해마다 같은 달에 기록하는 생태 모니터링.'],
-            ['미래 경고단', '녹지 감소 → 열섬, 온실가스 → 기후변화. 남쪽에서만 보이던 생물이 새로 들어왔다. 해결: 학교 옥상 녹화와 대중교통 이용 캠페인.'],
-            ['숲을 지켜조', '생물 종 수가 절반 넘게 줄었다. 사라진 생물 대부분은 시설 자리가 아닌 곳에서도 사라졌다 = 더위 때문. 해결: 나무 그늘 길 만들기.'],
-            ['열섬 탈출', '건물과 아스팔트가 늘수록 더 뜨거워진다. 해결: 주차장 대신 잔디블록, 쿨루프.'],
+            ['지구지킴이', '녹지가 사라지면 생물도 사라진다', '맥도날드·이마트 같은 시설이 녹지를 덮자 곤충 기록이 크게 줄었다. 줄어든 생물은 같은 계절에 서늘한 날 관찰되던 종이 많아서, 기온이 오른 것이 원인이라고 추론했다. 해결: 학교 화단에 자생 초본 심기.'],
+            ['초록발자국', '봄꽃이 한 달 빨라진다면?', '아주 먼 미래에는 봄꽃이 한 달쯤 빨리 핀다. 꽃과 곤충의 만남이 어긋날 수 있다. 해결: 같은 장소를 해마다 같은 달에 기록하는 생태 모니터링.'],
+            ['미래 경고단', '+7℃의 학교, 생물 종 절반 감소', '녹지 감소 → 열섬, 온실가스 → 기후변화. 남쪽에서만 보이던 생물이 새로 들어왔다. 해결: 학교 옥상 녹화와 대중교통 이용 캠페인.'],
+            ['숲을 지켜조', '시설 자리 밖에서도 생물이 사라졌다', '생물 종 수가 절반 넘게 줄었다. 사라진 생물 대부분은 시설 자리가 아닌 곳에서도 사라졌다 = 더위 때문. 해결: 나무 그늘 길 만들기.'],
+            ['열섬 탈출', '건물과 아스팔트가 도시를 데운다', '건물과 아스팔트가 늘수록 더 뜨거워진다. 해결: 주차장 대신 잔디블록, 쿨루프.'],
         ];
-        const posters = posterInfo.map(([title, description], i) => ({
+        const posters = posterInfo.map(([title, headline, description], i) => ({
             id: i + 1,
             classroom_id: 1,
             team: i + 1,
             title,
+            headline,
             description,
             image_url: `demo/poster-${i + 1}.png`,
             image_path: null,
@@ -380,7 +381,7 @@ const DemoAPI = (() => {
         async posters(classroomId) {
             return clone(state.posters.filter((p) => p.classroom_id === classroomId));
         },
-        async savePoster(classroomId, team, { title, description, file, old }) {
+        async savePoster(classroomId, team, { title, headline = '', description, file, old }) {
             let image_url = old ? old.image_url : '';
             if (file) {
                 image_url = await new Promise((resolve) => {
@@ -394,7 +395,7 @@ const DemoAPI = (() => {
                 p = { id: state.nextId++, classroom_id: classroomId, team };
                 state.posters.push(p);
             }
-            Object.assign(p, { title, description, image_url, image_path: null, updated_at: new Date().toISOString() });
+            Object.assign(p, { title, headline, description, image_url, image_path: null, updated_at: new Date().toISOString() });
             save({ table: 'posters', classroomId });
             return clone(p);
         },

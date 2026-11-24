@@ -133,7 +133,7 @@ const LiveAPI = (() => {
             return must(await db.from('classroom_posters').select('*').eq('classroom_id', classroomId).order('team'));
         },
         // file 이 있으면 새 사진을 올리고 예전 사진은 지움
-        async savePoster(classroomId, team, { title, description, file, old }) {
+        async savePoster(classroomId, team, { title, headline = '', description, file, old }) {
             let image_url = old ? old.image_url : '';
             let image_path = old ? old.image_path : null;
             if (file) {
@@ -144,13 +144,17 @@ const LiveAPI = (() => {
                 if (image_path) await db.storage.from('classroom-posters').remove([image_path]);
                 image_path = path;
             }
-            return must(
-                await db
-                    .from('classroom_posters')
-                    .upsert({ classroom_id: classroomId, team, title, description, image_url, image_path, updated_at: new Date().toISOString() }, { onConflict: 'classroom_id,team' })
-                    .select()
-                    .single()
-            );
+            const row = { classroom_id: classroomId, team, title, headline, description, image_url, image_path, updated_at: new Date().toISOString() };
+            const up = (r) => db.from('classroom_posters').upsert(r, { onConflict: 'classroom_id,team' }).select().single();
+            let res = await up(row);
+            // supabase/100_update_3.sql 을 아직 실행하지 않아 제목(headline) 칸이 없을 때: 제목만 빼고 저장
+            if (res.error && /headline/.test(res.error.message || '')) {
+                console.warn('포스터 제목 칸이 없어요. supabase/100_update_3.sql 을 실행하세요.');
+                const { headline: _drop, ...rest } = row;
+                res = await up(rest);
+                if (!res.error) return { ...res.data, _noHeadline: true };
+            }
+            return must(res);
         },
         async deletePoster(poster) {
             if (poster.image_path) await db.storage.from('classroom-posters').remove([poster.image_path]);

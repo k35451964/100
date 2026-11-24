@@ -82,6 +82,7 @@ async function galleryRefresh() {
                 </button>
                 <div class="poster-info">
                     <h4>${team}조${p && p.title ? ` · ${esc(p.title)}` : ''}${mineTeam ? ' <span class="tag">우리 조</span>' : ''}</h4>
+                    ${p && p.headline ? `<p class="poster-headline">${esc(p.headline)}</p>` : ''}
                     ${p && p.description ? `<p class="poster-desc">${esc(p.description)}</p>` : ''}
                     ${rated ? `<p class="muted small">내 별점: ${CRITERIA.map(([k, l]) => `${l} ${rated[k]}`).join(' · ')}</p>` : ''}
                     ${isTeacher() && res ? `<p class="muted small">별점 ${res.raters}명${res.raters ? ` · 평균 ${Number(res.total).toFixed(2)}` : ''}</p>` : ''}
@@ -139,6 +140,7 @@ function openPosterEditor(team) {
             <div class="poster-preview" id="poster-preview">${old && old.image_url ? `<img src="${esc(old.image_url)}" alt="">` : '<span class="muted">생성형 AI로 만든 포스터 그림을 골라 주세요</span>'}</div>
             <label>포스터 그림 (png·jpg, 10MB까지)<input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" ${old ? '' : 'required'}></label>
             <label>조 이름<input name="title" maxlength="40" value="${esc(old ? old.title : '')}" placeholder="예: 지구지킴이"></label>
+            <label>포스터 제목 <span class="muted small">그림 속 한글이 깨지면 제목·핵심 문구를 여기에 적어요</span><input name="headline" maxlength="60" value="${esc(old && old.headline ? old.headline : '')}" placeholder="예: 선인장도 한 수 접는 더위"></label>
             <label>포스터 설명 (두 생태지도를 비교해 알아낸 것, 해결 방안 등)<textarea name="description" rows="7">${esc(old ? old.description : '')}</textarea></label>
             <div class="row-end"><button type="submit" class="btn btn-primary btn-lg">저장</button></div>
         </form>`,
@@ -160,10 +162,11 @@ function openPosterEditor(team) {
         btn.disabled = true;
         btn.textContent = '올리는 중…';
         try {
-            await API.savePoster(APP.cls.id, team, { title: form.title.value.trim(), description: form.description.value.trim(), file: form.file.files[0] || null, old });
+            const saved = await API.savePoster(APP.cls.id, team, { title: form.title.value.trim(), headline: form.headline.value.trim(), description: form.description.value.trim(), file: form.file.files[0] || null, old });
             APP.posters = await API.posters(APP.cls.id);
             m.close();
-            toast('포스터를 저장했어요.', 'ok');
+            if (saved && saved._noHeadline) toast('포스터를 저장했어요. 제목 칸은 선생님이 supabase/100_update_3.sql 을 실행하면 저장돼요.', 'info');
+            else toast('포스터를 저장했어요.', 'ok');
             galleryRefresh();
         } catch (err) {
             toast(friendlyError(err), 'error');
@@ -224,7 +227,7 @@ function openPresentation(team, { single = false } = {}) {
         wrap.innerHTML = `<button class="present-x" aria-label="닫기">✕</button>
             <button class="present-nav prev" aria-label="이전">‹</button>
             <div class="present-img"><img src="${esc(p.image_url)}" alt="${p.team}조 포스터"></div>
-            <aside class="present-side"><h2>${p.team}조${p.title ? `<br><span>${esc(p.title)}</span>` : ''}</h2><p>${esc(p.description || '')}</p></aside>
+            <aside class="present-side"><h2>${p.team}조${p.title ? `<br><span>${esc(p.title)}</span>` : ''}</h2>${p.headline ? `<h3 class="present-headline">${esc(p.headline)}</h3>` : ''}<p>${esc(p.description || '')}</p></aside>
             <button class="present-nav next" aria-label="다음">›</button>`;
         wrap.querySelector('.present-x').onclick = close;
         wrap.querySelector('.prev').onclick = () => move(-1);

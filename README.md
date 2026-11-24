@@ -27,6 +27,7 @@
 4. **AI 허용 주소:** Edge Functions → Secrets → `ALLOWED_ORIGINS` = `https://teachitaka.kro.kr,https://k35451964.github.io`
    - 예전에 `100_setup.sql`을 이미 실행했다면 `supabase/100_update_1.sql`도 한 번 실행하세요(조 배정이 학생 화면에 바로 뜨게).
    - 조별 예측 기능을 쓰려면 `supabase/100_update_2.sql`도 한 번 실행하세요. (100_setup.sql을 새로 실행했다면 이미 들어 있음)
+   - 포스터 제목 칸을 쓰려면 `supabase/100_update_3.sql`도 한 번 실행하세요. (100_setup.sql을 새로 실행했다면 이미 들어 있음)
    - 시연용 키워드는 `supabase/100_demo_keywords.sql`(맨 위 학반 코드만 바꿔서 실행)로 한 번에 넣을 수 있습니다.
 5. **AI 키워드 분류:** Edge Functions → `gemini` → 코드를 `supabase/gemini/index.ts`로 바꾸고 Deploy.
    생태지도의 AI 동정·특징 작성은 그대로이고, `classify_keywords` 작업만 더해집니다. 이 단계를 안 해도 단어 규칙으로 분류할 수 있습니다.

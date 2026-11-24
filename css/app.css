@@ -1648,6 +1648,12 @@ table.data th {
 .poster-info h4 {
     font-size: 17px;
 }
+.poster-headline {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
 .poster-desc {
     margin: 0;
     font-size: 14px;
@@ -1745,6 +1751,12 @@ table.data th {
 .present-side h2 span {
     font-size: 30px;
     color: #fff;
+}
+.present-headline {
+    font-size: 28px;
+    line-height: 1.35;
+    color: #fde68a;
+    margin: 0 0 14px;
 }
 .present-side p {
     font-size: 20px;

@@ -96,6 +96,9 @@ create table if not exists public.classroom_posters (
     updated_at   timestamptz not null default now(),
     unique (classroom_id, team)
 );
+-- 포스터 제목 (조 이름과 따로, 그림 속 한글이 깨질 때 제목·핵심 문구를 여기에) — 업데이트 3
+alter table public.classroom_posters
+    add column if not exists headline text not null default '' check (char_length(headline) <= 60);
 
 create table if not exists public.poster_ratings (
     poster_id  bigint      not null references public.classroom_posters (id) on delete cascade,
