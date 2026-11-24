@@ -88,6 +88,21 @@ async function enter() {
 
 // ===== 로그인 =====
 
+// 첫 화면 지구: 마우스는 올리면 화난 지구로 뒤집히고 떼면 돌아옴. 태블릿·휴대폰(손가락·펜)은 누를 때마다 뒤집힘
+function setupFlipEarth() {
+    const el = document.querySelector('.flip-earth');
+    if (!el) return;
+    el.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'mouse') el.classList.add('flipped');
+    });
+    el.addEventListener('pointerleave', (e) => {
+        if (e.pointerType === 'mouse') el.classList.remove('flipped');
+    });
+    el.addEventListener('pointerup', (e) => {
+        if (e.pointerType !== 'mouse') el.classList.toggle('flipped');
+    });
+}
+
 function showLogin() {
     APP.screen = 'login';
     const demo = API.mode === 'demo';
@@ -117,6 +132,7 @@ function showLogin() {
                     <p class="muted small">계정이 없거나 비밀번호를 잊었다면 <a href="${TEACHITAKA_URL}" target="_blank" rel="noopener">티치타카 생태지도</a>에서 가입·찾기를 해 주세요.</p>`
             }
         </div>`;
+    setupFlipEarth();
     if (demo) {
         $('app').querySelectorAll('[data-as]').forEach((b) => b.addEventListener('click', () => API.signIn(b.dataset.as)));
         return;
