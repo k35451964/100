@@ -17,6 +17,7 @@ const SCENARIO = {
     short: '아주 먼 미래',
     tiny: '미래', // 휴대폰처럼 좁은 화면의 [지금 | 미래] 전환 버튼
     period: '아주 먼 미래',
+    years: '2081~2100년', // 실제 전망 기간 (화면 표기는 '아주 먼 미래', 근거 자료에는 이 기간을 그대로 보여 줌)
     // 기후변화로 오르는 연평균 기온(℃): 대구 북구, SSP5-8.5, 21세기 후반기(2081~2100) − 현재(2000~2019)
     // 출처: 기상청 「대구광역시 기후변화 전망보고서 2023」 표 4-4 (14.0℃ → 20.4℃)
     // 다른 학교라면 그 지역 광역시도 전망보고서의 시군구 값으로 바꾸세요. (기후정보포털 climate.go.kr)
@@ -205,7 +206,7 @@ function isClimateIndicator(name, sci) {
 const SOURCES = [
     {
         title: '미래 기온',
-        body: `${SCENARIO.period} 고탄소 시나리오(SSP5-8.5)에서 대구 북구 연평균 기온 ${LOCAL_CLIMATE.annualTempNow.toFixed(1)}℃ → ${(LOCAL_CLIMATE.annualTempNow + SCENARIO.dT).toFixed(1)}℃ (+${SCENARIO.dT}℃), 폭염일수 ${LOCAL_CLIMATE.hotDaysNow}일 → ${LOCAL_CLIMATE.hotDaysFuture}일`,
+        body: `${SCENARIO.years} 고탄소 시나리오(SSP5-8.5)에서 대구 북구 연평균 기온 ${LOCAL_CLIMATE.annualTempNow.toFixed(1)}℃ → ${(LOCAL_CLIMATE.annualTempNow + SCENARIO.dT).toFixed(1)}℃ (+${SCENARIO.dT}℃), 폭염일수 ${LOCAL_CLIMATE.hotDaysNow}일 → ${LOCAL_CLIMATE.hotDaysFuture}일`,
         from: '기상청 「대구광역시 기후변화 전망보고서 2023」 (국가 기후변화 표준 시나리오, 현재 2000~2019년 대비). 참고: 같은 시나리오에서 남한 평균 +6.3℃',
     },
     {
