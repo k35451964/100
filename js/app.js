@@ -108,14 +108,17 @@ function showLogin() {
     const demo = API.mode === 'demo';
     $('app').innerHTML = `
         <div class="center-card login-card">
-            <div class="logo flip-earth">
-                <div class="flip-inner">
-                    <img class="flip-front" src="img/earth.png" alt="" width="96" height="96">
-                    <img class="flip-back" src="img/earth-angry.png" alt="" width="96" height="96">
+            <div class="login-brand">
+                <div class="logo flip-earth">
+                    <div class="flip-inner">
+                        <img class="flip-front" src="img/earth.png" alt="" width="96" height="96">
+                        <img class="flip-back" src="img/earth-angry.png" alt="" width="96" height="96">
+                    </div>
                 </div>
+                <h1>아주 먼 미래, 우리 학교 생태지도</h1>
+                <p class="muted">티치타카 AI 생태지도 계정으로 로그인해요.</p>
             </div>
-            <h1>아주 먼 미래, 우리 학교 생태지도</h1>
-            <p class="muted">티치타카 AI 생태지도 계정으로 로그인해요.</p>
+            <div class="login-main">
             ${
                 demo
                     ? `<div class="demo-login">
@@ -129,8 +132,9 @@ function showLogin() {
                         <button class="btn btn-primary btn-lg" type="submit">로그인</button>
                         <p class="form-error" id="login-error"></p>
                     </form>
-                    <p class="muted small">계정이 없거나 비밀번호를 잊었다면 <a href="${TEACHITAKA_URL}" target="_blank" rel="noopener">티치타카 생태지도</a>에서 가입·찾기를 해 주세요.</p>`
+                    <p class="muted small login-help">계정이 없거나 비밀번호를 잊었다면 <a href="${TEACHITAKA_URL}" target="_blank" rel="noopener">티치타카 생태지도</a>에서 가입·찾기를 해 주세요.</p>`
             }
+            </div>
         </div>`;
     setupFlipEarth();
     if (demo) {

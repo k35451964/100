@@ -310,6 +310,83 @@ input[type='radio'] {
     font-size: 14px;
 }
 
+/* 태블릿(가로·세로)과 가로로 든 휴대폰: 첫 화면 상자를 16:10 가로형으로.
+   왼쪽은 지구·제목, 오른쪽은 로그인. 세로로 든 휴대폰(폭 600px 미만)과 컴퓨터는 위아래로 쌓인 그대로.
+   글씨·칸 크기는 상자 폭(cqw)에 맞춰 커지고 작아짐. 내용이 넘치면(오류 문구 등) 상자가 아래로 늘어남 */
+@media (hover: none) and (pointer: coarse) and (min-width: 600px) {
+    .login-card {
+        container-type: inline-size;
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        aspect-ratio: 16 / 10;
+        width: min(960px, calc(100vw - 32px), calc((100vh - 32px) * 1.6));
+        width: min(960px, calc(100vw - 32px), calc((100dvh - 32px) * 1.6));
+        margin: max(16px, calc((100vh - min(960px, calc(100vw - 32px), calc((100vh - 32px) * 1.6)) / 1.6) / 2)) auto 16px;
+        margin: max(16px, calc((100dvh - min(960px, calc(100vw - 32px), calc((100dvh - 32px) * 1.6)) / 1.6) / 2)) auto 16px;
+        padding: 0;
+    }
+    .login-brand,
+    .login-main {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        padding: 28px;
+        padding: clamp(18px, 4.6cqw, 44px);
+    }
+    .login-brand {
+        align-items: center;
+        border-radius: 26px 0 0 26px;
+        background: linear-gradient(160deg, var(--brand-soft), #f4fbf7);
+    }
+    .login-brand .flip-earth {
+        width: clamp(64px, 12.5cqw, 120px);
+        height: clamp(64px, 12.5cqw, 120px);
+        margin-bottom: clamp(8px, 1.8cqw, 18px);
+    }
+    .login-brand h1 {
+        margin: 0;
+        font-size: clamp(20px, 3.9cqw, 38px);
+        line-height: 1.25;
+    }
+    .login-brand p {
+        margin: clamp(6px, 1.2cqw, 12px) 0 0;
+        font-size: clamp(13px, 1.8cqw, 17px);
+        word-break: keep-all;
+    }
+    .login-main {
+        text-align: left;
+    }
+    .login-main .form,
+    .login-main .demo-login {
+        margin-top: 0;
+        gap: clamp(8px, 1.5cqw, 14px);
+    }
+    .login-main .form label {
+        font-size: clamp(13px, 1.6cqw, 16px);
+    }
+    .login-main input {
+        min-height: clamp(40px, 5.4cqw, 54px);
+        font-size: clamp(16px, 1.9cqw, 18px); /* 16px 아래면 아이폰이 입력할 때 화면을 확대함 */
+    }
+    .login-main .btn-lg {
+        min-height: clamp(44px, 6cqw, 58px);
+        font-size: clamp(16px, 2cqw, 20px);
+    }
+    .login-main .form-error:empty {
+        display: none;
+    }
+    .login-main .demo-badge {
+        font-size: clamp(12px, 1.5cqw, 15px);
+        word-break: keep-all;
+    }
+    .login-help {
+        margin: clamp(10px, 1.8cqw, 18px) 0 0;
+        font-size: clamp(12px, 1.45cqw, 14px);
+        word-break: keep-all;
+    }
+}
+
 .lobby {
     text-align: left;
 }
