@@ -1,4 +1,4 @@
-/* 2100년, 우리 학교 생태지도 — 디자인
+/* 아주 먼 미래, 우리 학교 생태지도 — 디자인
    전자칠판(교사, 큰 글씨)과 태블릿(학생, 터치) 기준. 티치타카 생태지도와 같은 초록 계열. */
 
 :root {
@@ -677,6 +677,7 @@ input[type='radio'] {
 .seg button {
     min-height: 44px;
     padding: 8px 20px;
+    white-space: nowrap;
     border: 0;
     border-radius: 12px;
     background: transparent;

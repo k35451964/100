@@ -1,5 +1,5 @@
 'use strict';
-// 2차시 지도 화면: 지금 ↔ 2100년 생태지도, [미래 보기] 연출(교사), 오른쪽 위 알림
+// 2차시 지도 화면: 지금 ↔ 아주 먼 미래 생태지도, [미래 보기] 연출(교사), 오른쪽 위 알림
 
 const MS = {
     map: null,
@@ -78,7 +78,7 @@ async function showMapScreen() {
     $('map-status').hidden = !!d.records.length;
     await ensureFuture();
     renderViewToggle();
-    drawMap(); // 알림은 2100년 지도를 볼 때 뜸
+    drawMap(); // 알림은 아주 먼 미래 지도를 볼 때 뜸
 }
 
 function renderViewToggle() {
@@ -90,7 +90,7 @@ function renderViewToggle() {
     }
     el.innerHTML = `<div class="seg">
         <button data-v="now" aria-pressed="${MS.view === 'now'}">지금</button>
-        <button data-v="future" aria-pressed="${MS.view === 'future'}">${esc(SCENARIO.short)}</button>
+        <button data-v="future" aria-pressed="${MS.view === 'future'}"><span class="lbl-l">${esc(SCENARIO.short)}</span><span class="lbl-s">${esc(SCENARIO.tiny)}</span></button>
     </div>`;
     el.querySelectorAll('[data-v]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -271,7 +271,7 @@ async function runFuturePlay() {
     await line(`시설이 들어선 자리에서 생물 기록 <b>${f.counts.lostHabitat}건</b>이 사라졌습니다${f.counts.partial ? `<br><small>${f.counts.partial}건은 서식지 일부만 남았습니다</small>` : ''}`, 1800);
     sub.hidden = true;
 
-    // ② 2100년까지 기온 상승 (+ 열섬). 견딘 범위를 먼저 넘는 생물부터 사라짐
+    // ② 아주 먼 미래까지 기온 상승 (+ 열섬). 견딘 범위를 먼저 넘는 생물부터 사라짐
     await say(`그리고 ${esc(SCENARIO.period)},<br>온실가스를 계속 많이 내뿜는다면 <b>(고탄소 시나리오)</b>`, 2200);
     cap.hidden = true;
     counter.hidden = false;

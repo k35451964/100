@@ -94,7 +94,7 @@ function showLogin() {
     $('app').innerHTML = `
         <div class="center-card login-card">
             <div class="logo">🌍</div>
-            <h1>2100년, 우리 학교 생태지도</h1>
+            <h1>아주 먼 미래, 우리 학교 생태지도</h1>
             <p class="muted">티치타카 AI 생태지도 계정으로 로그인해요.</p>
             ${
                 demo
