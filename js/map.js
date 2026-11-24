@@ -24,7 +24,8 @@ function kakaoReady(timeoutMs = 5000) {
 }
 
 async function createMap(el, { center, radius = 500, onPick = null, interactive = true } = {}) {
-    const ok = await kakaoReady();
+    const hasKakao = await libReady('lib-kakao', () => !!(window.kakao && kakao.maps), 5000);
+    const ok = hasKakao && (await kakaoReady());
     if (ok) {
         try {
             return createKakaoMap(el, { center, radius, onPick, interactive });
@@ -33,7 +34,7 @@ async function createMap(el, { center, radius = 500, onPick = null, interactive 
         }
     }
     // 카카오가 안 되면 OpenStreetMap 지도 (카카오 개발자 콘솔에 이 주소가 등록되기 전 등)
-    if (window.L && L.map) {
+    if (await libReady('lib-leaflet', () => !!(window.L && L.map), 5000)) {
         try {
             return createLeafletMap(el, { center, radius, onPick, interactive });
         } catch (err) {

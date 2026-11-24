@@ -38,6 +38,7 @@ function showKeywordScreen() {
     $('kw-form').addEventListener('submit', submitKeyword);
     if (teacher) {
         $('qr-mini').addEventListener('click', openJoinQr);
+        fillQrWhenReady('qr-mini', APP.cls.code);
         $('btn-today').addEventListener('click', openTodayMap);
     }
     renderBubbles();
@@ -178,17 +179,25 @@ function qrSvg(text) {
         return '<span class="qr-none">QR</span>';
     }
 }
+// QR 도구는 따로 받으므로, 다 받으면 그때 그림
+function fillQrWhenReady(id, code) {
+    libReady('lib-qr', () => typeof qrcode === 'function', 10000).then((ok) => {
+        const el = $(id);
+        if (ok && el) el.innerHTML = qrSvg(joinUrl(code));
+    });
+}
 function openJoinQr() {
     const code = APP.cls.code;
     openModal({
         title: '📱 학반 참여',
         size: 'wide',
         className: 'qr-modal',
-        body: `<div class="qr-big">${qrSvg(joinUrl(code))}</div>
+        body: `<div class="qr-big" id="qr-big">${qrSvg(joinUrl(code))}</div>
             <p class="qr-code">참여 코드 <b>${esc(code)}</b></p>
             <p class="muted small qr-url">${esc(joinUrl(code))}</p>
             <p class="muted small">카메라로 찍으면 로그인 뒤 이 학반에 바로 들어와요.</p>`,
     });
+    fillQrWhenReady('qr-big', code);
 }
 
 // ===== 오늘의 생태지도 (1차시 정리: 돌아보기) =====

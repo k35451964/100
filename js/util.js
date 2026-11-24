@@ -95,6 +95,27 @@ function josa(word, withFinal, withoutFinal) {
     return `${withFinal}(${withoutFinal})`;
 }
 
+// 화면을 막지 않게 따로 받는 외부 도구(지도·QR)를 쓸 때, 다 받았는지 기다림 → true(쓸 수 있음) / false
+function libReady(id, check, timeoutMs = 6000) {
+    return new Promise((resolve) => {
+        if (check()) return resolve(true);
+        const el = document.getElementById(id);
+        if (!el || el.dataset.state === 'error') return resolve(false);
+        if (el.dataset.state === 'load') return resolve(!!check());
+        const done = (ok) => {
+            clearTimeout(timer);
+            el.removeEventListener('load', onLoad);
+            el.removeEventListener('error', onError);
+            resolve(ok);
+        };
+        const onLoad = () => done(!!check());
+        const onError = () => done(false);
+        const timer = setTimeout(() => done(!!check()), timeoutMs);
+        el.addEventListener('load', onLoad);
+        el.addEventListener('error', onError);
+    });
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 서버 오류를 알아듣기 쉬운 말로

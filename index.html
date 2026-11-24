@@ -10,31 +10,34 @@
     <!-- 글꼴 (티치타카 생태지도와 같음) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap">
+    <!-- 글꼴·지도 모양 파일은 화면을 막지 않게 따로 받음 (학교망이 느리거나 막혀도 사이트가 먼저 뜸) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" media="print" onload="this.media='all'">
 
-    <!-- 외부 도구 (버전 고정) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=81f4c26167a4f95edb24ba69e3dc4815&libraries=clusterer&autoload=false"></script>
+    <!-- 외부 도구 (버전 고정)
+         Supabase는 시작에 꼭 필요해서 defer(순서 지킴), 지도·QR 도구는 async(받는 동안 화면을 막지 않음, 쓸 때 libReady로 기다림) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+    <script async id="lib-kakao" onload="this.dataset.state='load'" onerror="this.dataset.state='error'" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=81f4c26167a4f95edb24ba69e3dc4815&libraries=clusterer&autoload=false"></script>
     <!-- 카카오 지도를 쓸 수 없을 때 대신 쓰는 OpenStreetMap 지도 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'">
+    <script async id="lib-leaflet" onload="this.dataset.state='load'" onerror="this.dataset.state='error'" src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script async id="lib-qr" onload="this.dataset.state='load'" onerror="this.dataset.state='error'" src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
-    <!-- 이 사이트 (순서 중요: 설정 → 도우미 → 계산 → 데이터 → 화면 → 시작) -->
-    <link rel="stylesheet" href="css/app.css">
-    <script defer src="js/config.js"></script>
-    <script defer src="js/util.js"></script>
-    <script defer src="js/model.js"></script>
-    <script defer src="js/api-live.js"></script>
-    <script defer src="js/api-demo.js"></script>
-    <script defer src="js/map.js"></script>
-    <script defer src="js/keywords.js"></script>
-    <script defer src="js/future.js"></script>
-    <script defer src="js/compare.js"></script>
-    <script defer src="js/predict.js"></script>
-    <script defer src="js/gallery.js"></script>
-    <script defer src="js/teacher.js"></script>
-    <script defer src="js/app.js"></script>
+    <!-- 이 사이트 (순서 중요: 설정 → 도우미 → 계산 → 데이터 → 화면 → 시작)
+         ?v= 는 버전 표시: 사이트를 고칠 때마다 바꿔야 브라우저가 옛 파일과 새 파일을 섞어 읽지 않음 -->
+    <link rel="stylesheet" href="css/app.css?v=20261124a">
+    <script defer src="js/config.js?v=20261124a"></script>
+    <script defer src="js/util.js?v=20261124a"></script>
+    <script defer src="js/model.js?v=20261124a"></script>
+    <script defer src="js/api-live.js?v=20261124a"></script>
+    <script defer src="js/api-demo.js?v=20261124a"></script>
+    <script defer src="js/map.js?v=20261124a"></script>
+    <script defer src="js/keywords.js?v=20261124a"></script>
+    <script defer src="js/future.js?v=20261124a"></script>
+    <script defer src="js/compare.js?v=20261124a"></script>
+    <script defer src="js/predict.js?v=20261124a"></script>
+    <script defer src="js/gallery.js?v=20261124a"></script>
+    <script defer src="js/teacher.js?v=20261124a"></script>
+    <script defer src="js/app.js?v=20261124a"></script>
 </head>
 <body>
     <div id="app">
