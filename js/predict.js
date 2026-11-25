@@ -7,7 +7,7 @@
 
 const PRED_MAX = 3;
 const PRED_SHOW = 20; // 처음에 보여 주는 후보 수 (기록 많은 순), [더 보기]로 늘림
-const PRED = { modal: null, picked: null, reason: null, show: PRED_SHOW, q: '' }; // picked: Set(이름)
+const PRED = { modal: null, picked: null, reason: null, show: PRED_SHOW, q: '', page: 'pred' }; // picked: Set(이름), page: 미래가 열린 뒤 'pred'(예측만) | 'result'(예측과 결과)
 const GUESS = [
     ['gone', '사라질 것'],
     ['declined', '줄어들 것'],
@@ -65,6 +65,7 @@ async function openPredict() {
             PRED.reason = null;
             PRED.show = PRED_SHOW;
             PRED.q = '';
+            PRED.page = 'pred';
         },
     });
     try {
@@ -91,13 +92,29 @@ function predictRefresh() {
     let html = '';
     if (myTeam && !revealed) html += predictEditorHtml(myTeam);
     else if (!isTeacher() && !myTeam) html += '<p class="muted">조가 정해지면 조별로 예측할 수 있어요.</p>';
-    html += predictBoardHtml({ revealed });
-    if (revealed && APP.future) {
+    // 미래가 열린 뒤에는 두 쪽으로 나눔: ① 조별 예측(결과 없이) → ② 예측과 결과
+    const showResult = revealed && PRED.page === 'result';
+    if (revealed)
+        html += `<div class="seg pred-pages" role="tablist">
+            <button type="button" data-page="pred" aria-pressed="${!showResult}">① 조별 예측</button>
+            <button type="button" data-page="result" aria-pressed="${showResult}">② 예측과 결과</button>
+        </div>`;
+    html += predictBoardHtml({ revealed: showResult });
+    if (showResult && APP.future) {
         const by = (st) => APP.future.species.filter((s) => s.status === st).length;
         html += `<p class="muted small">✔ 사라짐 · △ 줄어듦(사라지지는 않음) · ✘ 남음</p>`;
         html += `<p class="pred-actual">실제 결과: 사라짐 <b>${by('gone')}종</b> · 줄어듦 <b>${by('declined')}종</b> · 남음 <b>${by('survived')}종</b> · 새로 옴 <b>${APP.future.newcomers.length}종</b></p>`;
+        html += `<div class="row-end"><button type="button" class="btn" data-page="pred">← 조별 예측</button></div>`;
+    } else if (revealed) {
+        html += `<div class="row-end"><button type="button" class="btn btn-primary btn-lg" data-page="result">결과 보기 →</button></div>`;
     }
     body.innerHTML = html;
+    body.querySelectorAll('[data-page]').forEach((b) =>
+        b.addEventListener('click', () => {
+            PRED.page = b.dataset.page;
+            predictRefresh();
+        })
+    );
     bindPredictEditor(myTeam);
 }
 

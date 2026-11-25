@@ -2534,3 +2534,13 @@ body.demo .demo-ribbon {
         display: none;
     }
 }
+
+/* 조별 예측 창: 미래가 열린 뒤 ① 조별 예측 / ② 예측과 결과 */
+.pred-pages {
+    margin: 0 0 14px;
+}
+.predict-modal .row-end {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
