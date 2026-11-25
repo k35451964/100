@@ -37,14 +37,52 @@ async function boot() {
             <p class="muted">서버 없이 둘러보려면 <a href="?demo=1">예시 모드</a>로 열어 보세요.</p></div>`;
         return;
     }
+    // 손님용 QR(#guest=…)로 들어오면 그 계정으로 자동 로그인 (교사가 학반 참여 QR 창에서 만듦)
+    const guestErr = await guestSignIn();
     APP.user = await API.currentUser();
     // 로그인 상태를 먼저 확인한 뒤에 변화를 듣습니다. (먼저 들으면 처음 알림을 '방금 로그인'으로 착각해 새로고침이 반복됨)
     API.onAuthChange((u) => {
         const was = APP.user ? APP.user.id : null;
         if ((u ? u.id : null) !== was) location.reload();
     });
-    if (!APP.user) return showLogin();
+    if (!APP.user) {
+        showLogin();
+        if (guestErr) toast(`손님용 QR로 로그인하지 못했어요: ${guestErr}`, 'error');
+        return;
+    }
     await enter();
+}
+
+// 주소의 #guest=… 를 읽어 로그인하고, 주소에서는 바로 지움 (방문 기록·화면에 남지 않게)
+async function guestSignIn() {
+    const m = location.hash.match(/[#&]guest=([^&]+)/);
+    if (!m) return null;
+    try {
+        history.replaceState(null, '', `${location.pathname}${location.search}`);
+    } catch (_) {
+        /* 파일로 연 경우 */
+    }
+    if (API.mode === 'demo') return null;
+    try {
+        const [email, password] = decodeGuest(m[1]);
+        if (!email || !password) throw new Error('QR 정보가 올바르지 않아요.');
+        const cur = await API.currentUser();
+        if (cur && cur.email && cur.email.toLowerCase() === email.toLowerCase()) return null;
+        if (cur) await API.signOut();
+        await API.signIn(email, password);
+        return null;
+    } catch (err) {
+        return friendlyError(err);
+    }
+}
+function encodeGuest(email, password) {
+    return btoa(unescape(encodeURIComponent(`${email}\n${password}`))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeGuest(token) {
+    const b = token.replace(/-/g, '+').replace(/_/g, '/');
+    const txt = decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4))));
+    const i = txt.indexOf('\n');
+    return i < 0 ? [] : [txt.slice(0, i).trim(), txt.slice(i + 1)];
 }
 
 async function enter() {

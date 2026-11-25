@@ -195,9 +195,44 @@ function openJoinQr() {
         body: `<div class="qr-big" id="qr-big">${qrSvg(joinUrl(code))}</div>
             <p class="qr-code">참여 코드 <b>${esc(code)}</b></p>
             <p class="muted small qr-url">${esc(joinUrl(code))}</p>
-            <p class="muted small">카메라로 찍으면 로그인 뒤 이 학반에 바로 들어와요.</p>`,
+            <p class="muted small">카메라로 찍으면 로그인 뒤 이 학반에 바로 들어와요.</p>
+            ${
+                isTeacher() && API.mode !== 'demo'
+                    ? `<details class="guest-qr"><summary>🎫 손님용 QR (찍으면 정해 둔 계정으로 자동 로그인)</summary>
+                        <p class="muted small">심사위원·참관인처럼 계정이 없는 사람용이에요. <b>이 QR을 찍는 누구나 이 계정으로 로그인</b>되니, 손님 전용 학생 계정만 쓰고 행사가 끝나면 비밀번호를 바꿔 주세요. 입력한 내용은 저장되지 않아요.</p>
+                        <form id="guest-form" class="form guest-form">
+                            <label>손님 계정 이메일<input type="email" name="email" required autocomplete="off"></label>
+                            <label>비밀번호<input type="password" name="password" required autocomplete="new-password"></label>
+                            <button class="btn btn-primary" type="submit">QR 만들기</button>
+                        </form>
+                        <div id="guest-out"></div>
+                    </details>`
+                    : ''
+            }`,
     });
     fillQrWhenReady('qr-big', code);
+    const gf = $('guest-form');
+    if (gf)
+        gf.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const url = `${joinUrl(code)}#guest=${encodeGuest(gf.email.value.trim(), gf.password.value)}`;
+            const draw = () => {
+                const out = $('guest-out');
+                if (!out) return;
+                out.innerHTML = `<div class="qr-big guest">${qrSvg(url)}</div>
+                    <p class="muted small">이 QR을 캡처하거나 인쇄해 두세요. 손님 계정은 들어온 뒤 [관리 → 조 편성]에서 조를 정해 주면 예측·별점도 할 수 있어요.</p>
+                    <button type="button" class="btn btn-small" id="guest-copy">🔗 링크 복사</button>`;
+                $('guest-copy').addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(url);
+                        toast('링크를 복사했어요.', 'ok');
+                    } catch (_) {
+                        toast('복사하지 못했어요. QR을 캡처해 주세요.', 'error');
+                    }
+                });
+            };
+            libReady('lib-qr', () => typeof qrcode === 'function', 5000).then(draw);
+        });
 }
 
 // ===== 오늘의 생태지도 (1차시 정리: 돌아보기) =====

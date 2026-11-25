@@ -2435,3 +2435,22 @@ body.demo .demo-ribbon {
     background: #fee2e2;
     color: #b91c1c;
 }
+
+/* 손님용 QR (학반 참여 QR 창) */
+.guest-qr {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px dashed var(--line);
+    text-align: left;
+}
+.guest-qr summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+.guest-form {
+    margin: 10px 0;
+}
+.qr-big.guest svg {
+    max-width: 260px;
+}
