@@ -41,8 +41,13 @@ function showKeywordScreen() {
         fillQrWhenReady('qr-mini', APP.cls.code);
         $('btn-today').addEventListener('click', openTodayMap);
     }
+    fitKwLayout();
     renderBubbles();
     window.addEventListener('resize', renderBubblesDebounced);
+    if (document.fonts && document.fonts.ready)
+        document.fonts.ready.then(() => {
+            if (APP.screen === 'keywords' && fitKwLayout()) renderBubbles();
+        });
     // 뒤에 학교 지도를 흐리게
     kwMap = null;
     const center = classCenter([]);
@@ -71,8 +76,33 @@ async function submitKeyword(e) {
 }
 
 const renderBubblesDebounced = debounce(() => {
-    if (APP.screen === 'keywords') renderBubbles();
+    if (APP.screen !== 'keywords') return;
+    fitKwLayout();
+    renderBubbles();
 }, 200);
+
+// 질문 제목이 위쪽 카드(학반·참여 코드)와 겹치면 카드 아래로 내리고, 말풍선 구름도 그만큼 내림
+// (화면 너비·글꼴에 따라 카드 높이가 달라서 CSS만으로는 모든 휴대폰에 맞추기 어려움)
+function fitKwLayout() {
+    const q = document.querySelector('.kw-screen .kw-question');
+    const cloud = $('kw-cloud');
+    if (!q || !cloud) return false;
+    const before = q.style.top;
+    q.style.top = '';
+    cloud.style.top = '';
+    const base = q.offsetParent ? q.offsetParent.getBoundingClientRect().top : 0;
+    const qr = q.getBoundingClientRect();
+    let need = qr.top;
+    document.querySelectorAll('.kw-screen .hud-tl, .kw-screen .hud-tr').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width && r.left < qr.right && qr.left < r.right && r.bottom + 6 > qr.top) need = Math.max(need, r.bottom + 12);
+    });
+    if (need > qr.top) {
+        q.style.top = `${Math.round(need - base)}px`;
+        cloud.style.top = `${Math.round(q.getBoundingClientRect().bottom - base + 8)}px`;
+    }
+    return q.style.top !== before;
+}
 
 function bubbleColor(key) {
     let h = 0;
@@ -88,7 +118,8 @@ function packBubbles(groups, W, H) {
     // 화면에 다 안 들어가면 함께 줄임
     const area = items.reduce((a, it) => a + Math.PI * it.r * it.r, 0);
     const fit = Math.min(1, Math.sqrt((W * H * 0.5) / Math.max(area, 1)));
-    items.forEach((it) => (it.r = Math.max(22, it.r * fit)));
+    const minR = Math.min(W, H) < 420 ? 16 : 22; // 휴대폰처럼 좁으면 말풍선을 더 작게까지 줄여 겹치지 않게
+    items.forEach((it) => (it.r = Math.max(minR, it.r * fit)));
     const placed = [];
     const cx = W / 2;
     const cy = H / 2;
@@ -102,7 +133,11 @@ function packBubbles(groups, W, H) {
             if (x - it.r < 4 || x + it.r > W - 4 || y - it.r < 4 || y + it.r > H - 4) continue;
             if (placed.every((p) => Math.hypot(p.x - x, p.y - y) >= p.r + it.r + 6)) spot = { x, y };
         }
-        if (!spot) spot = { x: 8 + Math.random() * (W - 16), y: 8 + Math.random() * (H - 16) };
+        // 자리가 없으면 겹치더라도 구름 영역 안에만 둠 (제목·입력창 위로 넘치지 않게)
+        if (!spot) {
+            const r = Math.min(it.r, W / 2 - 4, H / 2 - 4);
+            spot = { x: r + 4 + Math.random() * Math.max(0, W - 2 * r - 8), y: r + 4 + Math.random() * Math.max(0, H - 2 * r - 8) };
+        }
         placed.push({ ...it, ...spot });
     });
     return placed;
