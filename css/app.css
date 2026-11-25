@@ -2387,27 +2387,35 @@ body.demo .demo-ribbon {
     padding: 10px;
 }
 
-/* 예측: 생물마다 사라질 것·줄어들 것·남을 것 */
-.pred-guesses {
+/* 예측: 고른 생물, 후보 검색, 더 보기 */
+.pred-picked {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 0 0 12px;
-}
-.pred-guess {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    margin: 10px 0 8px;
     padding: 6px 10px;
     border-radius: 12px;
-    background: #fff;
-    border: 1px solid #ddd6fe;
+    border: 1.5px dashed #c4b5fd;
+    background: #faf5ff;
 }
-.pred-guess .seg button[aria-pressed='true'] {
-    background: var(--violet);
-    color: #fff;
+.pred-search {
+    width: 100%;
+    font: inherit;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+}
+.pred-more {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1.5px dashed var(--line);
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink-2);
+    cursor: pointer;
 }
 .pv-guess {
     margin-left: 4px;
@@ -2422,7 +2430,8 @@ body.demo .demo-ribbon {
     background: #dcfce7;
     color: #166534;
 }
-.pv-wrong {
-    background: #fef3c7;
-    color: #92400e;
+.pv-wrong,
+.pv-no {
+    background: #fee2e2;
+    color: #b91c1c;
 }
