@@ -221,6 +221,7 @@ function predictBoardHtml({ revealed, onlyTeam = null, compact = false }) {
     return `<section class="pred-board${compact ? ' compact' : ''}">${head}<div class="pred-grid">${cards}</div></section>`;
 }
 
+// (지금은 쓰지 않음: 비교 화면에서는 조별 예측을 보여 주지 않고, [🔮 예측 결과]에서만 봄)
 // 비교 화면 맨 위: 예측과 결과 (학생: 우리 조 / 교사: 모든 조)
 function predictCompareHtml() {
     if (!predictionsReady() || !predictionsRevealed() || !(APP.predictions || []).length) return '';

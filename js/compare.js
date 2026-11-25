@@ -21,7 +21,6 @@ async function openCompare() {
             <div class="stat"><span>사라진 종</span><b>${c.gone}<small>종</small></b></div>
             <div class="stat"><span>새로 온 종</span><b>${c.newcomers}<small>종</small></b></div>
         </div>
-        ${predictCompareHtml()}
         <section class="cmp-sec">
             <h3>두 생태지도</h3>
             <div class="mini-maps">
